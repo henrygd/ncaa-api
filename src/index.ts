@@ -4,8 +4,6 @@ import ExpiryMap from 'expiry-map'
 
 const validPaths = ['stats', 'rankings', 'standings', 'history']
 
-const customHeaderKey = process.env.NCAA_HEADER_KEY
-
 // set cache expiry to 30 min
 const cache = new ExpiryMap(30 * 60 * 1000)
 
@@ -13,7 +11,7 @@ const cache = new ExpiryMap(30 * 60 * 1000)
 //////////////////////////////// ELYSIA //////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-const app = new Elysia()
+export const app = new Elysia()
 	.get('/', ({ set }) => {
 		// redirect to github page
 		set.redirect = 'https://github.com/henrygd/ncaa-api'
@@ -21,8 +19,8 @@ const app = new Elysia()
 	.get('/*', async ({ query: { page }, path, set, headers }) => {
 		set.headers['Content-Type'] = 'application/json'
 
-		// check if request has custom header value
-		if (customHeaderKey && headers['x-ncaa-key'] !== customHeaderKey) {
+		// validate custom header value
+		if (process.env.NCAA_HEADER_KEY && headers['x-ncaa-key'] !== process.env.NCAA_HEADER_KEY) {
 			set.status = 401
 			throw new Error('Unauthorized')
 		}
