@@ -1,0 +1,9 @@
+version: '3.9'
+
+services:
+  app:
+    image: 'tbd'
+    container_name: 'ncaa-api'
+    ports: ['3000:3000']
+    # environment:
+    #   - HEADER_VALUE=custom-header-value # optional
