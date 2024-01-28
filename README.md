@@ -209,6 +209,16 @@ Website: https://www.ncaa.com/history/bowling/nc
 }
 ```
 
+## Deployment
+
+TODO - public docker image
+
+## Limiting Access
+
+If you host your own instance, you may specify a custom header value to be present in all requests as a way to restrict access to the API. This isn't the most secure method, but it's better than nothing.
+
+To do this, set the `NCAA_HEADER_KEY` environment variable to the desired value and include the header `x-ncaa-key` in your requests. See the [docker-compose.yml](/docker-compose.yml) for an example.
+
 ## Development
 
 This is an [Elysia](https://elysiajs.com/) app. To start the development server run:
@@ -218,7 +228,3 @@ bun run dev
 ```
 
 TODO - tests
-
-## Deployment
-
-TODO - dockerize

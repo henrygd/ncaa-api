@@ -6,4 +6,4 @@ services:
     container_name: 'ncaa-api'
     ports: ['3000:3000']
     # environment:
-    #   - HEADER_VALUE=custom-header-value # optional
+    #   - NCAA_HEADER_KEY=custom-header-value # optional
