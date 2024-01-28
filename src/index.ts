@@ -1,7 +1,11 @@
 import { Elysia, NotFoundError } from 'elysia'
 import { parseHTML } from 'linkedom'
+import ExpiryMap from 'expiry-map'
 
 const validPaths = ['stats', 'rankings', 'standings', 'history']
+
+// set cache expiry to 30 min
+const cache = new ExpiryMap(30 * 60 * 1000)
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// ELYSIA //////////////////////////////////////
@@ -14,6 +18,7 @@ const app = new Elysia()
 	})
 	.get('/*', async ({ query: { page }, path, set }) => {
 		set.headers['Content-Type'] = 'application/json'
+
 		// if production, cache for 30 min
 		if (process.env.NODE_ENV === 'production') {
 			set.headers['Cache-Control'] = 'public, max-age=1800'
@@ -31,8 +36,19 @@ const app = new Elysia()
 			throw new Error('Page parameter must be an integer')
 		}
 
-		const data = await getData({ path, page })
-		return JSON.stringify(data)
+		// check cache
+		const cacheKey = path + (page ?? '')
+		if (cache.has(cacheKey)) {
+			return cache.get(cacheKey)
+		}
+
+		// fetch data
+		const data = JSON.stringify(await getData({ path, page }))
+
+		// cache data
+		cache.set(cacheKey, data)
+
+		return data
 	})
 	.listen(3000)
 
@@ -49,9 +65,11 @@ console.log(`Server is running at ${app.server?.hostname}:${app.server?.port}`)
  */
 async function getData(opts: { path: string; page?: string }) {
 	// fetch html
-	const res = await fetch(
-		`https://www.ncaa.com/${opts.path}${opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ''}`
-	)
+	const url = `https://www.ncaa.com/${opts.path}${
+		opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ''
+	}`
+	console.log(`Fetching ${url}`)
+	const res = await fetch(url)
 
 	if (!res.ok) {
 		throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
