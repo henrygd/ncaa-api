@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   app:
-    image: 'tbd'
+    image: 'ncaa-api'
     container_name: 'ncaa-api'
     ports: ['3000:3000']
     # environment:

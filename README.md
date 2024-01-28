@@ -211,7 +211,25 @@ Website: https://www.ncaa.com/history/bowling/nc
 
 ## Deployment
 
-TODO - public docker image
+Clone the repo and build the image from the dockerfile:
+
+```bash
+docker build -t ncaa-api .
+```
+
+Run the image:
+
+```bash
+docker run -p 3000:3000 ncaa-api
+```
+
+Or use the included [docker-compose.yml](/docker-compose.yml) file:
+
+```bash
+docker-compose up
+```
+
+The API should be available at http://localhost:3000.
 
 ## Limiting Access
 
@@ -221,10 +239,14 @@ To do this, set the `NCAA_HEADER_KEY` environment variable to the desired value 
 
 ## Development
 
-This is an [Elysia](https://elysiajs.com/) app. To start the development server run:
+This is a minimal [Elysia](https://elysiajs.com/) app. To start the development server run:
 
 ```bash
 bun run dev
 ```
 
-TODO - tests
+To run tests:
+
+```bash
+bun test
+```
