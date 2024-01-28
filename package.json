@@ -6,7 +6,9 @@
     "dev": "bun run --watch src/index.ts"
   },
   "dependencies": {
-    "elysia": "latest"
+    "elysia": "latest",
+    "expiry-map": "^2.0.0",
+    "linkedom": "^0.16.8"
   },
   "devDependencies": {
     "bun-types": "latest"
