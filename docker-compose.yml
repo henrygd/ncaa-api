@@ -4,6 +4,7 @@ services:
   app:
     image: 'henrygd/ncaa-api'
     container_name: 'ncaa-api'
+    restart: 'unless-stopped'
     ports: ['3000:3000']
     # environment:
     #   - NCAA_HEADER_KEY=custom-header-value # optional
