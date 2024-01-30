@@ -211,25 +211,13 @@ Website: https://www.ncaa.com/history/bowling/nc
 
 ## Deployment
 
-Clone the repo and build the image from the dockerfile:
+Use the included [docker-compose.yml](/docker-compose.yml) or run directly with docker:
 
 ```bash
-docker build -t ncaa-api .
+docker run -p 3000:3000 henrygd/ncaa-api
 ```
 
-Run the image:
-
-```bash
-docker run -p 3000:3000 ncaa-api
-```
-
-Or use the included [docker-compose.yml](/docker-compose.yml) file:
-
-```bash
-docker-compose up
-```
-
-The API should be available at http://localhost:3000.
+The app should be available at [http://localhost:3000](http://localhost:3000/history/bowling/nc).
 
 ## Limiting Access
 
@@ -250,3 +238,5 @@ To run tests:
 ```bash
 bun test
 ```
+
+Contributions welcome.
