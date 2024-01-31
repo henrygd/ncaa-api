@@ -14,7 +14,7 @@ describe('General', () => {
 		const response = await app.handle(new Request('http://localhost/stats/test?page=invalid'))
 		expect(response.status).toBe(400)
 	})
-	it('valid route returns good data', async () => {
+	it('rankings route returns good data', async () => {
 		const response = await app.handle(
 			new Request('http://localhost/rankings/football/fbs/associated-press')
 		)
@@ -22,6 +22,20 @@ describe('General', () => {
 		const { data } = await response.json()
 		expect(data.length).toBeGreaterThan(0)
 		expect(data[0]).toContainKeys(['RANK', 'SCHOOL'])
+	})
+	it('scoreboard route returns good data', async () => {
+		const response = await app.handle(
+			new Request('http://localhost/scoreboard/basketball-men/d1/2024/01/01')
+		)
+		expect(response.status).toBe(200)
+		const data = await response.json()
+		expect(data).toContainKey('games')
+	})
+	it('re-request uses cached data', async () => {
+		const start = performance.now()
+		await app.handle(new Request('http://localhost/rankings/football/fbs/associated-press'))
+		const finish = performance.now() - start
+		expect(finish).toBeLessThan(10)
 	})
 })
 

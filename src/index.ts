@@ -2,21 +2,33 @@ import { Elysia, NotFoundError } from 'elysia'
 import { parseHTML } from 'linkedom'
 import ExpiryMap from 'expiry-map'
 
-const validPaths = ['stats', 'rankings', 'standings', 'history']
+const validPaths = ['stats', 'rankings', 'standings', 'history', 'scoreboard']
 
 // set cache expiry to 30 min
 const cache = new ExpiryMap(30 * 60 * 1000)
+
+// set scores cache expiry to 3 min
+const scoreboardCache = new ExpiryMap(3 * 60 * 1000)
+
+// formats date for ncaa.com url
+const urlDateFormatter = new Intl.DateTimeFormat('en-CA', {
+	year: 'numeric',
+	month: '2-digit',
+	day: '2-digit',
+	timeZone: 'America/New_York',
+})
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// ELYSIA //////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
 export const app = new Elysia()
-	.get('/', ({ set }) => {
-		// redirect to github page
-		set.redirect = 'https://github.com/henrygd/ncaa-api'
-	})
-	.get('/*', async ({ query: { page }, path, set, headers }) => {
+	// redirect index to github page
+	.get('/', ({ set }) => (set.redirect = 'https://github.com/henrygd/ncaa-api'))
+	// create a store to hold cache key
+	.state('cacheKey', '')
+	// validate request / set cache key
+	.onBeforeHandle(({ store, set, headers, path, query: { page } }) => {
 		set.headers['Content-Type'] = 'application/json'
 
 		// validate custom header value
@@ -25,13 +37,15 @@ export const app = new Elysia()
 			throw new Error('Unauthorized')
 		}
 
-		// if production, cache for 30 min
+		const basePath = path.split('/')[1]
+
+		// if production, set cache control
 		if (process.env.NODE_ENV === 'production') {
-			set.headers['Cache-Control'] = 'public, max-age=1800'
+			set.headers['Cache-Control'] = `public, max-age=${basePath === 'scoreboard' ? '180' : '1800'}`
 		}
 
 		// check that resource is valid
-		if (!validPaths.includes(path.split('/')[1])) {
+		if (!validPaths.includes(basePath)) {
 			set.status = 400
 			throw new Error('Invalid resource')
 		}
@@ -42,17 +56,54 @@ export const app = new Elysia()
 			throw new Error('Page parameter must be an integer')
 		}
 
-		// check cache
-		const cacheKey = path + (page ?? '')
-		if (cache.has(cacheKey)) {
-			return cache.get(cacheKey)
+		// set cache key
+		store.cacheKey = path + (page ?? '')
+	})
+	// scoreboard route to fetch data from data.ncaa.com json endpoint
+	.get('/scoreboard/:sport/*', async ({ store, params }) => {
+		if (scoreboardCache.has(store.cacheKey)) {
+			return scoreboardCache.get(store.cacheKey)
 		}
+		const isFootball = params.sport === 'football'
+		// create url to fetch json
+		const division = params['*'].split('/')[0]
+		// football uses year / week numbers and P for playoffs
+		// other sports use date format yyyy/mm/dd
+		const urlDateMatcher = isFootball ? /\d{4}\/(\d{2}|P)/ : /\d{4}\/\d{2}\/\d{2}/
+		let urlDate = params['*'].match(urlDateMatcher)?.[0]
+		if (!urlDate && isFootball) {
+			// football - use last playoff year if no date is provided
+			urlDate = `${new Date().getFullYear() - 1}/P`
+		}
+		if (!urlDate) {
+			// others - use current date if no date is provided
+			urlDate = urlDateFormatter.format(new Date()).replaceAll('-', '/')
+		}
+		const url = `https://data.ncaa.com/casablanca/scoreboard/${params.sport}/${division}/${urlDate}/scoreboard.json`
 
+		// fetch data
+		console.log(`Fetching ${url}`)
+		const res = await fetch(url)
+		if (!res.ok) {
+			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+		}
+		const data = await res.text()
+
+		// cache data
+		scoreboardCache.set(store.cacheKey, data)
+
+		return data
+	})
+	// all other routes fetch data by scraping ncaa.com
+	.get('/*', async ({ query: { page }, path, store }) => {
+		if (cache.has(store.cacheKey)) {
+			return cache.get(store.cacheKey)
+		}
 		// fetch data
 		const data = JSON.stringify(await getData({ path, page }))
 
 		// cache data
-		cache.set(cacheKey, data)
+		cache.set(store.cacheKey, data)
 
 		return data
 	})
