@@ -261,7 +261,7 @@ function getStandingsHeaders(table: HTMLTableElement) {
 	for (let i = 0; i < rowTwoThs.length; i++) {
 		const th = rowTwoThs[i]
 		const heading = th.textContent?.trim() ?? ''
-		headings.push(rowOneHeadings[i] + ' ' + heading)
+		headings.push(rowOneHeadings[i] + (heading ? ` ${heading}` : ''))
 	}
 
 	return headings
