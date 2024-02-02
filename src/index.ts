@@ -10,14 +10,6 @@ const cache = new ExpiryMap(30 * 60 * 1000)
 // set scores cache expiry to 3 min
 const scoreboardCache = new ExpiryMap(3 * 60 * 1000)
 
-// formats date for ncaa.com url
-const urlDateFormatter = new Intl.DateTimeFormat('en-CA', {
-	year: 'numeric',
-	month: '2-digit',
-	day: '2-digit',
-	timeZone: 'America/New_York',
-})
-
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// ELYSIA //////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -64,21 +56,19 @@ export const app = new Elysia()
 		if (scoreboardCache.has(store.cacheKey)) {
 			return scoreboardCache.get(store.cacheKey)
 		}
-		const isFootball = params.sport === 'football'
-		// create url to fetch json
+
+		// get division from url
 		const division = params['*'].split('/')[0]
-		// football uses year / week numbers and P for playoffs
-		// other sports use date format yyyy/mm/dd
-		const urlDateMatcher = isFootball ? /\d{4}\/(\d{2}|P)/ : /\d{4}\/\d{2}\/\d{2}/
+
+		// find date in url
+		const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/
 		let urlDate = params['*'].match(urlDateMatcher)?.[0]
-		if (!urlDate && isFootball) {
-			// football - use last playoff year if no date is provided
-			urlDate = `${new Date().getFullYear() - 1}/P`
-		}
+
+		// if not date in passed in url, fetch date from today.json
 		if (!urlDate) {
-			// others - use current date if no date is provided
-			urlDate = urlDateFormatter.format(new Date()).replaceAll('-', '/')
+			urlDate = await getTodayUrl(params.sport, division)
 		}
+
 		const url = `https://data.ncaa.com/casablanca/scoreboard/${params.sport}/${division}/${urlDate}/scoreboard.json`
 
 		// fetch data
@@ -114,6 +104,29 @@ console.log(`Server is running at ${app.server?.hostname}:${app.server?.port}`)
 //////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// FUNCTIONS ////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Fetch proper url date for today from ncaa.com
+ * @param sport - sport to fetch
+ * @param division - division to fetch
+ */
+async function getTodayUrl(sport: string, division: string) {
+	// check cache
+	const cacheKey = `today-${sport}-${division}`
+	if (cache.has(cacheKey)) {
+		return cache.get(cacheKey)
+	}
+	console.log(`Fetching today.json for ${sport} ${division}`)
+	const req = await fetch(
+		`https://data.ncaa.com/casablanca/schedule/${sport}/${division}/today.json`
+	)
+	if (!req.ok) {
+		throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+	}
+	const data = await req.json()
+	cache.set(cacheKey, data.today)
+	return data.today as string
+}
 
 /**
  * Fetch data from ncaa.com
