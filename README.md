@@ -1,12 +1,12 @@
 # NCAA API
 
-API to return consumable data from ncaa.com. Works with stats, rankings, standings, and history.
+API to return consumable data from ncaa.com. Works with scores, stats, rankings, standings, schedules, and history.
 
 ## Usage
 
 Make a GET request using the same path as the URL on the main website. You'll get a JSON response with the data.
 
-You can test the API using the example host below. Host your own if you need it to be reliable long term.
+You can test the API using the example site below. Host your own if you need it to be reliable long term.
 
 https://ncaa-api.henrygd.me/rankings/football/fbs/associated-press
 
@@ -18,42 +18,96 @@ The following URL parameters are supported:
 | --------- | --------------------------- |
 | `page`    | Page number. Defaults to 1. |
 
-## Examples
+## Routes
 
-### Football - Associated Press rankings
+### Scores
 
-Website: https://www.ncaa.com/rankings/football/fbs/associated-press
+Fetches live scores for a given sport, division, and date.
 
-`GET /rankings/football/fbs/associated-press`
+Website: https://www.ncaa.com/scoreboard/football/fbs/2023/13/all-conf
+
+`GET /scoreboard/football/fbs/2023/13/all-conf`
 
 ```json
 {
-  "sport": "Football",
-  "title": "College football rankings: Associated Press Top 25",
-  "updated": "Through Games JAN. 8, 2024",
-  "page": 1,
-  "pages": 1,
-  "data": [
-    {
-      "RANK": "1",
-      "SCHOOL": "Michigan (61)",
-      "POINTS": "1525 ",
-      "PREVIOUS": "1",
-      "RECORD": "15-0"
-    },
-    {
-      "RANK": "2",
-      "SCHOOL": "Washington",
-      "POINTS": "1459",
-      "PREVIOUS": "2",
-      "RECORD": "14-1"
-    },
+	"inputMD5Sum": "946b0d7ecce3877d6cd036a19daf95ed",
+	"instanceId": "52aa051f77b7475da1baba2df45d5e98",
+	"updated_at": "01-19-2024 23:50:30",
+	"hideRank": false,
+	"games": [
+		{
+			"game": {
+				"gameID": "3146430",
+				"away": {
+					"score": "24",
+					"names": {
+						"char6": "OHIOST",
+						"short": "Ohio St.",
+						"seo": "ohio-st",
+						"full": "The Ohio State University"
+					},
+					"winner": false,
+					"seed": "",
+					"description": "(11-1)",
+					"rank": "2",
+					"conferences": [
+						{
+							"conferenceName": "Big Ten",
+							"conferenceSeo": "big-ten"
+						},
+						{
+							"conferenceName": "Top 25",
+							"conferenceSeo": "top-25"
+						}
+					]
+				},
+				"finalMessage": "FINAL",
+				"bracketRound": "",
+				"title": "Michigan Ohio St.",
+				"contestName": "",
+				"url": "/game/6154104",
+				"network": "",
+				"home": {
+					"score": "30",
+					"names": {
+						"char6": "MICH",
+						"short": "Michigan",
+						"seo": "michigan",
+						"full": "University of Michigan"
+					},
+					"winner": true,
+					"seed": "",
+					"description": "(12-0)",
+					"rank": "3",
+					"conferences": [
+						{
+							"conferenceName": "Big Ten",
+							"conferenceSeo": "big-ten"
+						},
+						{
+							"conferenceName": "Top 25",
+							"conferenceSeo": "top-25"
+						}
+					]
+				},
+				"liveVideoEnabled": false,
+				"startTime": "12:00PM ET",
+				"startTimeEpoch": "1700931600",
+				"bracketId": "",
+				"gameState": "final",
+				"startDate": "11-25-2023",
+				"currentPeriod": "FINAL",
+				"videoState": "",
+				"bracketRegion": "",
+				"contestClock": "0:00"
+			}
+		},
     ...
-  ]
+	]
 }
 ```
 
-### Football - scoring defense
+### Stats
 
 Website: https://www.ncaa.com/stats/football/fbs/current/team/28
 
@@ -98,7 +152,75 @@ Website: https://www.ncaa.com/stats/football/fbs/current/team/28
 }
 ```
 
-### Women's Basketball - ASUN conference rankings
+Website: https://www.ncaa.com/stats/football/fbs/current/individual/750
+
+`GET /stats/football/fbs/current/individual/750`
+
+```json
+{
+  "sport": "Football",
+  "title": "Rushing TDs",
+  "updated": "Monday, January 08, 2024 11:52 pm - Through games Monday, January 08, 2024",
+  "page": 1,
+  "pages": 6,
+  "data": [
+    {
+      "Rank": "1",
+      "Name": "Blake Corum",
+      "Team": "Michigan",
+      "Cl": "Sr.",
+      "Position": "RB",
+      "G": "15",
+      "Rush TD": "27"
+    },
+    {
+      "Rank": "2",
+      "Name": "Ollie Gordon",
+      "Team": "Oklahoma St.",
+      "Cl": "So.",
+      "Position": "RB",
+      "G": "14",
+      "Rush TD": "21"
+    },
+    ...
+  ]
+}
+```
+
+### Rankings
+
+Website: https://www.ncaa.com/rankings/football/fbs/associated-press
+
+`GET /rankings/football/fbs/associated-press`
+
+```json
+{
+  "sport": "Football",
+  "title": "College football rankings: Associated Press Top 25",
+  "updated": "Through Games JAN. 8, 2024",
+  "page": 1,
+  "pages": 1,
+  "data": [
+    {
+      "RANK": "1",
+      "SCHOOL": "Michigan (61)",
+      "POINTS": "1525 ",
+      "PREVIOUS": "1",
+      "RECORD": "15-0"
+    },
+    {
+      "RANK": "2",
+      "SCHOOL": "Washington",
+      "POINTS": "1459",
+      "PREVIOUS": "2",
+      "RECORD": "14-1"
+    },
+    ...
+  ]
+}
+```
+
+### Standings
 
 Website: https://www.ncaa.com/standings/basketball-women/d1/asun
 
@@ -113,7 +235,7 @@ Website: https://www.ncaa.com/standings/basketball-women/d1/asun
   "pages": 1,
   "data": [
     {
-      "School ": "FGCU",
+      "School": "FGCU",
       "Conference W": "6",
       "Conference L": "0",
       "Conference PCT": "1.000",
@@ -123,7 +245,7 @@ Website: https://www.ncaa.com/standings/basketball-women/d1/asun
       "Overall STREAK": "Won 9"
     },
     {
-      "School ": "Central Ark.",
+      "School": "Central Ark.",
       "Conference W": "5",
       "Conference L": "1",
       "Conference PCT": "0.833",
@@ -137,44 +259,7 @@ Website: https://www.ncaa.com/standings/basketball-women/d1/asun
 }
 ```
 
-### Women's Ice Hockey - Individual faceoff wins
-
-Website: https://www.ncaa.com/stats/icehockey-women/d1/current/individual/1261
-
-`GET /stats/icehockey-women/d1/current/individual/1261`
-
-```json
-{
-  "sport": "Women's Ice Hockey",
-  "title": "Faceoff wins",
-  "updated": "Wednesday, January 24, 2024 10:04 pm - Through games Wednesday, January 24, 2024",
-  "page": 1,
-  "pages": 6,
-  "data": [
-    {
-      "Rank": "1",
-      "Name": "Tessa Janecke",
-      "Team": "Penn St.",
-      "Cl": "So.",
-      "Games Plyd.": "26",
-      "FO won": "439",
-      "FO lost": "240"
-    },
-    {
-      "Rank": "2",
-      "Name": "Sadie Peart",
-      "Team": "Quinnipiac",
-      "Cl": "Sr.",
-      "Games Plyd.": "27",
-      "FO won": "372",
-      "FO lost": "290"
-    },
-    ...
-  ]
-}
-```
-
-### Bowling - NCAA championship history
+### History
 
 Website: https://www.ncaa.com/history/bowling/nc
 
@@ -209,6 +294,47 @@ Website: https://www.ncaa.com/history/bowling/nc
 }
 ```
 
+### Schedule
+
+Returns game dates for a given sport, division, and date range.
+
+This is the only route that doesn't exactly match a website URL. The website doesn't have schedule pages, but the sport and division are consistent with other URLs.
+
+It also requires different dates for different sports. Football uses YYYY, while basketball, hockey, and others use YYYY/MM.
+
+`GET /schedule/basketball-men/d1/2023/02`
+
+```json
+{
+  "division": "d1",
+  "inputMD5Sum": "ba47f9e21af54d3d4b5f81fc38048e29",
+  "month": "02",
+  "conference_name": "all-conf",
+  "created_at": "08-07-2023 15:32:05",
+  "season": "2022",
+  "sport": "MBB",
+  "gameDates": [
+    {
+      "contest_date": "02-01-2023",
+      "year": "2023",
+      "weekday": "Wed",
+      "games": 47,
+      "season": "2022",
+      "day": "01"
+    },
+    {
+      "contest_date": "02-02-2023",
+      "year": "2023",
+      "weekday": "Thu",
+      "games": 75,
+      "season": "2022",
+      "day": "02"
+    },
+    ...
+  ]
+}
+```
+
 ## Deployment
 
 Use the included [docker-compose.yml](/docker-compose.yml) or run directly with docker:
@@ -227,7 +353,7 @@ To do this, set the `NCAA_HEADER_KEY` environment variable to the desired value 
 
 ## Development
 
-This is a minimal [Elysia](https://elysiajs.com/) app. To start the development server run:
+This is a minimal [ElysiaJS](https://elysiajs.com/) app. To start the development server run:
 
 ```bash
 bun run dev
