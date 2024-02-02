@@ -2,7 +2,7 @@ import { Elysia, NotFoundError } from 'elysia'
 import { parseHTML } from 'linkedom'
 import ExpiryMap from 'expiry-map'
 
-const validPaths = ['stats', 'rankings', 'standings', 'history', 'scoreboard']
+const validPaths = ['stats', 'rankings', 'standings', 'history', 'scoreboard', 'schedule']
 
 // set cache expiry to 30 min
 const cache = new ExpiryMap(30 * 60 * 1000)
@@ -50,6 +50,25 @@ export const app = new Elysia()
 
 		// set cache key
 		store.cacheKey = path + (page ?? '')
+	})
+	// schedule route to retrieve game dates
+	.get('/schedule/:sport/:division/*', async ({ store, params }) => {
+		if (cache.has(store.cacheKey)) {
+			return cache.get(store.cacheKey)
+		}
+		const { sport, division } = params
+
+		const req = await fetch(
+			`https://data.ncaa.com/casablanca/schedule/${sport}/${division}/${params['*']}/schedule-all-conf.json`
+		)
+
+		if (!req.ok) {
+			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+		}
+
+		const data = await req.json()
+		cache.set(store.cacheKey, data)
+		return data
 	})
 	// scoreboard route to fetch data from data.ncaa.com json endpoint
 	.get('/scoreboard/:sport/*', async ({ store, params }) => {
