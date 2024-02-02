@@ -129,7 +129,7 @@ console.log(`Server is running at ${app.server?.hostname}:${app.server?.port}`)
  * @param sport - sport to fetch
  * @param division - division to fetch
  */
-async function getTodayUrl(sport: string, division: string) {
+async function getTodayUrl(sport: string, division: string): Promise<string> {
 	// check cache
 	const cacheKey = `today-${sport}-${division}`
 	if (cache.has(cacheKey)) {
