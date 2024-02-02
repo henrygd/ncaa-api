@@ -30,80 +30,80 @@ Website: https://www.ncaa.com/scoreboard/football/fbs/2023/13/all-conf
 
 ```json
 {
-	"inputMD5Sum": "946b0d7ecce3877d6cd036a19daf95ed",
-	"instanceId": "52aa051f77b7475da1baba2df45d5e98",
-	"updated_at": "01-19-2024 23:50:30",
-	"hideRank": false,
-	"games": [
-		{
-			"game": {
-				"gameID": "3146430",
-				"away": {
-					"score": "24",
-					"names": {
-						"char6": "OHIOST",
-						"short": "Ohio St.",
-						"seo": "ohio-st",
-						"full": "The Ohio State University"
-					},
-					"winner": false,
-					"seed": "",
-					"description": "(11-1)",
-					"rank": "2",
-					"conferences": [
-						{
-							"conferenceName": "Big Ten",
-							"conferenceSeo": "big-ten"
-						},
-						{
-							"conferenceName": "Top 25",
-							"conferenceSeo": "top-25"
-						}
-					]
-				},
-				"finalMessage": "FINAL",
-				"bracketRound": "",
-				"title": "Michigan Ohio St.",
-				"contestName": "",
-				"url": "/game/6154104",
-				"network": "",
-				"home": {
-					"score": "30",
-					"names": {
-						"char6": "MICH",
-						"short": "Michigan",
-						"seo": "michigan",
-						"full": "University of Michigan"
-					},
-					"winner": true,
-					"seed": "",
-					"description": "(12-0)",
-					"rank": "3",
-					"conferences": [
-						{
-							"conferenceName": "Big Ten",
-							"conferenceSeo": "big-ten"
-						},
-						{
-							"conferenceName": "Top 25",
-							"conferenceSeo": "top-25"
-						}
-					]
-				},
-				"liveVideoEnabled": false,
-				"startTime": "12:00PM ET",
-				"startTimeEpoch": "1700931600",
-				"bracketId": "",
-				"gameState": "final",
-				"startDate": "11-25-2023",
-				"currentPeriod": "FINAL",
-				"videoState": "",
-				"bracketRegion": "",
-				"contestClock": "0:00"
-			}
-		},
+  "inputMD5Sum": "946b0d7ecce3877d6cd036a19daf95ed",
+  "instanceId": "52aa051f77b7475da1baba2df45d5e98",
+  "updated_at": "01-19-2024 23:50:30",
+  "hideRank": false,
+  "games": [
+    {
+      "game": {
+        "gameID": "3146430",
+        "away": {
+          "score": "24",
+          "names": {
+            "char6": "OHIOST",
+            "short": "Ohio St.",
+            "seo": "ohio-st",
+            "full": "The Ohio State University"
+          },
+          "winner": false,
+          "seed": "",
+          "description": "(11-1)",
+          "rank": "2",
+          "conferences": [
+            {
+              "conferenceName": "Big Ten",
+              "conferenceSeo": "big-ten"
+            },
+            {
+              "conferenceName": "Top 25",
+              "conferenceSeo": "top-25"
+            }
+          ]
+        },
+        "finalMessage": "FINAL",
+        "bracketRound": "",
+        "title": "Michigan Ohio St.",
+        "contestName": "",
+        "url": "/game/6154104",
+        "network": "",
+        "home": {
+          "score": "30",
+          "names": {
+            "char6": "MICH",
+            "short": "Michigan",
+            "seo": "michigan",
+            "full": "University of Michigan"
+          },
+          "winner": true,
+          "seed": "",
+          "description": "(12-0)",
+          "rank": "3",
+          "conferences": [
+            {
+              "conferenceName": "Big Ten",
+              "conferenceSeo": "big-ten"
+            },
+            {
+              "conferenceName": "Top 25",
+              "conferenceSeo": "top-25"
+            }
+          ]
+        },
+        "liveVideoEnabled": false,
+        "startTime": "12:00PM ET",
+        "startTimeEpoch": "1700931600",
+        "bracketId": "",
+        "gameState": "final",
+        "startDate": "11-25-2023",
+        "currentPeriod": "FINAL",
+        "videoState": "",
+        "bracketRegion": "",
+        "contestClock": "0:00"
+      }
+    },
     ...
-	]
+  ]
 }
 ```
 
