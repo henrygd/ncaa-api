@@ -173,6 +173,8 @@ async function getData(opts: { path: string; page?: string }) {
 		throw new Error('Could not parse data')
 	}
 
+	const route = opts.path.split('/')[1]
+
 	// find general info
 	const sport = document.querySelector('h2.page-title')?.textContent?.trim() ?? ''
 
@@ -184,6 +186,8 @@ async function getData(opts: { path: string; page?: string }) {
 	if (titleEl) {
 		titleEl.querySelector('.hidden')?.remove()
 		title = titleEl.textContent?.trim() ?? ''
+	} else {
+		title = route === 'standings' ? 'ALL CONFERENCES' : document.title.split(' |')[0]
 	}
 
 	let updated =
@@ -205,14 +209,50 @@ async function getData(opts: { path: string; page?: string }) {
 		pages = tablePageLinks.length
 	}
 
+	const data = route === 'standings' ? parseStandings(document) : parseTable(table)
+
+	return { sport, title, updated, page, pages, data }
+}
+
+/**
+ * Parse standings pages (multiple tables)
+ * @param document - document to parse
+ */
+function parseStandings(document: Document) {
 	const data = []
 
-	let headings: (string | null)[] = []
+	const conferenceTitles = document.querySelectorAll('.standings-conference')
 
-	if (opts.path.includes('standings')) {
-		headings = getStandingsHeaders(table)
+	for (const conf of conferenceTitles) {
+		const confTable = conf.nextElementSibling as HTMLTableElement
+		if (!confTable) {
+			throw new Error('Could not parse data')
+		}
+		data.push({
+			conference: conf.textContent?.trim() ?? '',
+			standings: parseTable(confTable),
+		})
+	}
+
+	return data
+}
+
+/**
+ * Parse table elements
+ * @param table - table element to parse
+ */
+function parseTable(table: HTMLTableElement) {
+	const data = []
+
+	let keys: (string | null)[] = []
+
+	// standings tables have subheaders :/
+	const hasSubheader = table.querySelector('.standings-table-subheader')
+
+	if (hasSubheader) {
+		keys = getStandingsHeaders(table)
 	} else {
-		headings = [...table.querySelectorAll('thead th')].map((th) => th.textContent)
+		keys = [...table.querySelectorAll('thead th')].map((th) => th.textContent)
 	}
 
 	const rows = table.querySelectorAll('tbody tr:not(.subdiv-header)')
@@ -220,19 +260,18 @@ async function getData(opts: { path: string; page?: string }) {
 		const rowData: Record<string, string> = {}
 		const cells = row.querySelectorAll('td')
 		for (let i = 0; i < cells.length; i++) {
-			const heading = headings[i]
-			if (heading) {
-				rowData[heading] = cells[i].textContent?.trim() ?? ''
+			const key = keys[i]
+			if (key) {
+				rowData[key] = cells[i].textContent?.trim() ?? ''
 			}
 		}
 		data.push(rowData)
 	}
-
-	return { sport, title, updated, page, pages, data }
+	return data
 }
 
 /**
- * Merge table headers that span multiple column.
+ * Merge table headers that span multiple columns.
  * Use the first row of headers as the base according to colspan and
  * concat the second row th textContent to the first row th textContent
  * @param table - table element to parse
