@@ -1,6 +1,6 @@
 # NCAA API
 
-API to return consumable data from ncaa.com. Works with scores, stats, rankings, standings, schedules, and history.
+Free API to return consumable data from ncaa.com. Works with scores, stats, rankings, standings, schedules, and history.
 
 ## Usage
 
@@ -37,7 +37,6 @@ Website: https://www.ncaa.com/scoreboard/football/fbs/2023/13/all-conf
   "games": [
     {
       "game": {
-        "gameID": "3146430",
         "away": {
           "score": "24",
           "names": {
@@ -61,12 +60,6 @@ Website: https://www.ncaa.com/scoreboard/football/fbs/2023/13/all-conf
             }
           ]
         },
-        "finalMessage": "FINAL",
-        "bracketRound": "",
-        "title": "Michigan Ohio St.",
-        "contestName": "",
-        "url": "/game/6154104",
-        "network": "",
         "home": {
           "score": "30",
           "names": {
@@ -90,6 +83,13 @@ Website: https://www.ncaa.com/scoreboard/football/fbs/2023/13/all-conf
             }
           ]
         },
+        "gameID": "3146430",
+        "finalMessage": "FINAL",
+        "bracketRound": "",
+        "title": "Michigan Ohio St.",
+        "contestName": "",
+        "url": "/game/6154104",
+        "network": "",
         "liveVideoEnabled": false,
         "startTime": "12:00PM ET",
         "startTimeEpoch": "1700931600",
@@ -222,37 +222,43 @@ Website: https://www.ncaa.com/rankings/football/fbs/associated-press
 
 ### Standings
 
-Website: https://www.ncaa.com/standings/basketball-women/d1/asun
+Website: https://www.ncaa.com/standings/basketball-women/d1
 
-`GET /standings/basketball-women/d1/asun`
+`GET /standings/basketball-women/d1`
 
 ```json
 {
   "sport": "Women's Basketball",
-  "title": "ASUN CONFERENCE",
-  "updated": "Jan 26, 2024 05:03 AM EDT",
+  "title": "ALL CONFERENCES",
+  "updated": "Feb 03, 2024 05:08 AM EDT",
   "page": 1,
   "pages": 1,
   "data": [
     {
-      "School": "FGCU",
-      "Conference W": "6",
-      "Conference L": "0",
-      "Conference PCT": "1.000",
-      "Overall W": "16",
-      "Overall L": "4",
-      "Overall PCT": "0.800",
-      "Overall STREAK": "Won 9"
-    },
-    {
-      "School": "Central Ark.",
-      "Conference W": "5",
-      "Conference L": "1",
-      "Conference PCT": "0.833",
-      "Overall W": "13",
-      "Overall L": "6",
-      "Overall PCT": "0.684",
-      "Overall STREAK": "Won 2"
+      "conference": "ASUN",
+      "standings": [
+        {
+          "School": "FGCU",
+          "Conference W": "9",
+          "Conference L": "0",
+          "Conference PCT": "1.000",
+          "Overall W": "19",
+          "Overall L": "4",
+          "Overall PCT": "0.826",
+          "Overall STREAK": "Won 12"
+        },
+        {
+          "School": "Central Ark.",
+          "Conference W": "7",
+          "Conference L": "1",
+          "Conference PCT": "0.875",
+          "Overall W": "15",
+          "Overall L": "6",
+          "Overall PCT": "0.714",
+          "Overall STREAK": "Won 4"
+        },
+        ...
+      ]
     },
     ...
   ]
