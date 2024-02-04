@@ -66,7 +66,7 @@ export const app = new Elysia()
 			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
 		}
 
-		const data = await req.json()
+		const data = await req.text()
 		cache.set(store.cacheKey, data)
 		return data
 	})
