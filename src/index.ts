@@ -33,7 +33,7 @@ export const app = new Elysia()
 
 		// if production, set cache control
 		if (process.env.NODE_ENV === 'production') {
-			set.headers['Cache-Control'] = `public, max-age=${basePath === 'scoreboard' ? '180' : '1800'}`
+			set.headers['Cache-Control'] = `public, max-age=${basePath === 'scoreboard' ? '60' : '1800'}`
 		}
 
 		// check that resource is valid
