@@ -7,8 +7,8 @@ const validPaths = ['stats', 'rankings', 'standings', 'history', 'scoreboard', '
 // set cache expiry to 30 min
 const cache = new ExpiryMap(30 * 60 * 1000)
 
-// set scores cache expiry to 3 min
-const scoreboardCache = new ExpiryMap(3 * 60 * 1000)
+// set scores cache expiry to 1 min
+const scoreboardCache = new ExpiryMap(1 * 60 * 1000)
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// ELYSIA //////////////////////////////////////
