@@ -25,7 +25,7 @@ export const app = new Elysia()
 	// create a store to hold cache key
 	.state('cacheKey', '')
 	// validate request / set cache key
-	.onBeforeHandle(({ store, set, headers, path, query: { page } }) => {
+	.onBeforeHandle({ as: 'global' }, ({ store, set, headers, path, query: { page } }) => {
 		set.headers['Content-Type'] = 'application/json'
 
 		// validate custom header value
