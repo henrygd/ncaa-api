@@ -2,10 +2,8 @@ name: Make Docker Image
 
 on:
   push:
-    branches:
-      - 'master'
     tags:
-      - 'v*'
+      - '*'
 
 env:
   IMAGE_NAME: ${{ github.repository }}
