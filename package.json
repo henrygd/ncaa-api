@@ -1,17 +1,17 @@
 {
-  "name": "ncaa-api-elysia",
-  "version": "1.0.50",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
-  },
-  "dependencies": {
-    "elysia": "latest",
-    "expiry-map": "^2.0.0",
-    "linkedom": "^0.16.8"
-  },
-  "devDependencies": {
-    "bun-types": "latest"
-  },
-  "module": "src/index.js"
+	"name": "ncaa-api",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"dev": "bun run --watch src/index.ts",
+		"start": "NODE_ENV=production bun src/index.ts"
+	},
+	"dependencies": {
+		"elysia": "^1.0.7",
+		"expiry-map": "^2.0.0",
+		"linkedom": "^0.16.8"
+	},
+	"devDependencies": {
+		"bun-types": "latest"
+	},
+	"module": "src/index.js"
 }
