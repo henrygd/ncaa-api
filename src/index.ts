@@ -10,6 +10,11 @@ const cache = new ExpiryMap(30 * 60 * 1000)
 // set scores cache expiry to 1 min
 const scoreboardCache = new ExpiryMap(1 * 60 * 1000)
 
+/** log message to console with timestamp */
+function log(str: string) {
+	console.log(`[${new Date().toISOString().substring(0, 19).replace('T', ' ')}] ${str}`)
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// ELYSIA //////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -91,7 +96,7 @@ export const app = new Elysia()
 		const url = `https://data.ncaa.com/casablanca/scoreboard/${params.sport}/${division}/${urlDate}/scoreboard.json`
 
 		// fetch data
-		console.log(`Fetching ${url}`)
+		log(`Fetching ${url}`)
 		const res = await fetch(url)
 		if (!res.ok) {
 			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
@@ -118,7 +123,7 @@ export const app = new Elysia()
 	})
 	.listen(3000)
 
-console.log(`Server is running at ${app.server?.hostname}:${app.server?.port}`)
+log(`Server is running at ${app.server?.hostname}:${app.server?.port}`)
 
 //////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// FUNCTIONS ////////////////////////////////////
@@ -135,7 +140,7 @@ async function getTodayUrl(sport: string, division: string): Promise<string> {
 	if (cache.has(cacheKey)) {
 		return cache.get(cacheKey)
 	}
-	console.log(`Fetching today.json for ${sport} ${division}`)
+	log(`Fetching today.json for ${sport} ${division}`)
 	const req = await fetch(
 		`https://data.ncaa.com/casablanca/schedule/${sport}/${division}/today.json`
 	)
@@ -157,7 +162,7 @@ async function getData(opts: { path: string; page?: string }) {
 	const url = `https://www.ncaa.com${opts.path}${
 		opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ''
 	}`
-	console.log(`Fetching ${url}`)
+	log(`Fetching ${url}`)
 	const res = await fetch(url)
 
 	if (!res.ok) {
