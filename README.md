@@ -4,9 +4,9 @@ Free API to return consumable data from ncaa.com. Works with scores, stats, rank
 
 ## Usage
 
-Make a GET request using the same path as the URL on the main website. You'll get a JSON response with the data.
+Make a GET request using the same path as the URL on the NCAA website. You'll get a JSON response with the data.
 
-You can test the API using the example site below. Host your own if you need it to be reliable long term.
+You can test the API using the example site below. [Host your own](#deployment) if you need it to be reliable long term.
 
 https://ncaa-api.henrygd.me/rankings/football/fbs/associated-press
 
