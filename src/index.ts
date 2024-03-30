@@ -76,7 +76,7 @@ export const app = new Elysia()
 		return data
 	})
 	// scoreboard route to fetch data from data.ncaa.com json endpoint
-	.get('/scoreboard/:sport/*', async ({ store, params }) => {
+	.get('/scoreboard/:sport/*', async ({ store, params, set }) => {
 		if (scoreboardCache.has(store.cacheKey)) {
 			return scoreboardCache.get(store.cacheKey)
 		}
@@ -88,8 +88,15 @@ export const app = new Elysia()
 		const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/
 		let urlDate = params['*'].match(urlDateMatcher)?.[0]
 
-		// if not date in passed in url, fetch date from today.json
-		if (!urlDate) {
+		if (urlDate) {
+			// return 400 if date is more than a year in the future
+			// (had runaway bot requesting every day until I noticed it in 2195)
+			if (new Date(urlDate).getFullYear() > new Date().getFullYear() + 1) {
+				set.status = 400
+				throw new Error('Invalid date')
+			}
+		} else {
+			// if date not in passed in url, fetch date from today.json
 			urlDate = await getTodayUrl(params.sport, division)
 		}
 
