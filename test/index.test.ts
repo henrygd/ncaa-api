@@ -37,6 +37,31 @@ describe('General', () => {
 		const finish = performance.now() - start
 		expect(finish).toBeLessThan(10)
 	})
+	it('semaphore queues simultaneous requests for same scoreboard resource', async () => {
+		const requests = []
+		// will fail when baseball season starts again bc date will be different
+		// should be replace with whatever sport has the longest until it starts again
+		const routes = ['/scoreboard/baseball/d1', '/scoreboard/baseball/d1/2024/06/24/all-conf']
+		for (let i = 0; i < 3; i++) {
+			for (const route of routes) {
+				requests.push(
+					app.handle(new Request(`http://localhost${route}`)).then((res) => res.headers)
+				)
+			}
+		}
+		const headers = await Promise.all(requests)
+		let nonCached = 0
+		let cached = 0
+		for (const header of headers) {
+			if (header.get('x-score-cache') === 'hit') {
+				cached++
+			} else {
+				nonCached++
+			}
+		}
+		expect(nonCached).toBe(1)
+		expect(cached).toBe(headers.length - 1)
+	})
 })
 
 describe('Header validation', () => {

@@ -1,6 +1,7 @@
 import { Elysia, NotFoundError } from 'elysia'
 import { parseHTML } from 'linkedom'
 import ExpiryMap from 'expiry-map'
+import { getSemaphore } from '@henrygd/semaphore'
 
 const validPaths = ['stats', 'rankings', 'standings', 'history', 'scoreboard', 'schedule']
 
@@ -77,43 +78,62 @@ export const app = new Elysia()
 	})
 	// scoreboard route to fetch data from data.ncaa.com json endpoint
 	.get('/scoreboard/:sport/*', async ({ store, params, set }) => {
-		if (scoreboardCache.has(store.cacheKey)) {
-			return scoreboardCache.get(store.cacheKey)
-		}
-
-		// get division from url
-		const division = params['*'].split('/')[0]
-
-		// find date in url
-		const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/
-		let urlDate = params['*'].match(urlDateMatcher)?.[0]
-
-		if (urlDate) {
-			// return 400 if date is more than a year in the future
-			// (had runaway bot requesting every day until I noticed it in 2195)
-			if (new Date(urlDate).getFullYear() > new Date().getFullYear() + 1) {
-				set.status = 400
-				throw new Error('Invalid date')
+		const semCacheKey = getSemaphore(store.cacheKey)
+		await semCacheKey.acquire()
+		try {
+			if (scoreboardCache.has(store.cacheKey)) {
+				set.headers['x-score-cache'] = 'hit'
+				return scoreboardCache.get(store.cacheKey)
 			}
-		} else {
-			// if date not in passed in url, fetch date from today.json
-			urlDate = await getTodayUrl(params.sport, division)
+
+			// get division from url
+			const division = params['*'].split('/')[0]
+
+			// find date in url
+			const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/
+			let urlDate = params['*'].match(urlDateMatcher)?.[0]
+
+			if (urlDate) {
+				// return 400 if date is more than a year in the future
+				// (had runaway bot requesting every day until I noticed it in 2195)
+				if (new Date(urlDate).getFullYear() > new Date().getFullYear() + 1) {
+					set.status = 400
+					throw new Error('Invalid date')
+				}
+			} else {
+				// if date not in passed in url, fetch date from today.json
+				urlDate = await getTodayUrl(params.sport, division)
+			}
+
+			const url = `https://data.ncaa.com/casablanca/scoreboard/${params.sport}/${division}/${urlDate}/scoreboard.json`
+
+			const semUrl = getSemaphore(url)
+			await semUrl.acquire()
+			try {
+				// check cache
+				if (scoreboardCache.has(url)) {
+					set.headers['x-score-cache'] = 'hit'
+					return scoreboardCache.get(url)
+				}
+				// fetch data
+				log(`Fetching ${url}`)
+				const res = await fetch(url)
+				if (!res.ok) {
+					throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+				}
+				const data = await res.text()
+
+				// cache data
+				scoreboardCache.set(store.cacheKey, data)
+				scoreboardCache.set(url, data)
+
+				return data
+			} finally {
+				semUrl.release()
+			}
+		} finally {
+			semCacheKey.release()
 		}
-
-		const url = `https://data.ncaa.com/casablanca/scoreboard/${params.sport}/${division}/${urlDate}/scoreboard.json`
-
-		// fetch data
-		log(`Fetching ${url}`)
-		const res = await fetch(url)
-		if (!res.ok) {
-			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
-		}
-		const data = await res.text()
-
-		// cache data
-		scoreboardCache.set(store.cacheKey, data)
-
-		return data
 	})
 	// all other routes fetch data by scraping ncaa.com
 	.get('/*', async ({ query: { page }, path, store }) => {
