@@ -6,9 +6,10 @@
 		"start": "NODE_ENV=production bun src/index.ts"
 	},
 	"dependencies": {
-		"elysia": "^1.0.7",
+		"@henrygd/semaphore": "^0.0.1",
+		"elysia": "^1.0.25",
 		"expiry-map": "^2.0.0",
-		"linkedom": "^0.16.8"
+		"linkedom": "^0.18.4"
 	},
 	"devDependencies": {
 		"bun-types": "latest"
