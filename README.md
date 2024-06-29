@@ -346,7 +346,7 @@ It also requires different dates for different sports. Football uses YYYY, while
 Use the included [docker-compose.yml](/docker-compose.yml) or run directly with docker:
 
 ```bash
-docker run -p 3000:3000 henrygd/ncaa-api
+docker run --rm -p 3000:3000 henrygd/ncaa-api
 ```
 
 The app should be available at [http://localhost:3000](http://localhost:3000/history/bowling/nc).
