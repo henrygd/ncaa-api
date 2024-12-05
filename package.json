@@ -2,14 +2,14 @@
 	"name": "ncaa-api",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
-		"dev": "bun run --watch src/index.ts",
+		"dev": "bun --watch src/index.ts",
 		"start": "NODE_ENV=production bun src/index.ts"
 	},
 	"dependencies": {
-		"@henrygd/semaphore": "^0.0.1",
-		"elysia": "^1.0.25",
+		"@henrygd/semaphore": "^0.0.2",
+		"elysia": "^1.1.26",
 		"expiry-map": "^2.0.0",
-		"linkedom": "^0.18.4"
+		"linkedom": "^0.18.5"
 	},
 	"devDependencies": {
 		"bun-types": "latest"
