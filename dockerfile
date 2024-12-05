@@ -1,23 +1,21 @@
-FROM oven/bun:alpine as builder
+FROM oven/bun:slim AS builder
 
 WORKDIR /app
 
-COPY package.json .
-COPY bun.lockb .
-
-RUN bun install --production
-
 COPY src src
-COPY tsconfig.json .
+COPY package.json bun.lockb tsconfig.json ./
 
-ENV NODE_ENV production
-RUN bun build ./src/index.ts --compile --outfile ./server
+ENV NODE_ENV=production
+
+RUN bun install --production --no-cache
+RUN bun build src/index.ts --compile --minify --outfile build/app
 
 # ? -------------------------
-FROM gcr.io/distroless/base
 
-COPY --from=builder /app/server /server
+FROM gcr.io/distroless/base:nonroot
 
-CMD ["/server"]
+COPY --from=builder /app/build .
+
+CMD ["./app"]
 
 EXPOSE 3000
