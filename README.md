@@ -1,6 +1,8 @@
 # NCAA API
 
-Free API to return consumable data from ncaa.com. Works with scores, stats, rankings, standings, schedules, and history.
+Free API to return consumable data from ncaa.com.
+
+Works with scores, stats, rankings, standings, schedules, history, and game details (box score, play by play, scoring summary, team stats).
 
 ## Usage
 
@@ -340,6 +342,17 @@ It also requires different dates for different sports. Football uses YYYY, while
   ]
 }
 ```
+
+### Game
+
+Provides details of a single game.
+
+Website: https://www.ncaa.com/game/6305900
+
+- `GET /game/6305900` or `GET /game/6305900/boxscore` returns box score
+- `GET /game/6305900/play-by-play` returns play by play
+- `GET /game/6305900/scoring-summary` returns scoring summary if available
+- `GET /game/6305900/team-stats` returns team stats if available
 
 ## Deployment
 
