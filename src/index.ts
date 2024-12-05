@@ -3,7 +3,15 @@ import { parseHTML } from 'linkedom'
 import ExpiryMap from 'expiry-map'
 import { getSemaphore } from '@henrygd/semaphore'
 
-const validPaths = ['stats', 'rankings', 'standings', 'history', 'scoreboard', 'schedule']
+const validPaths = new Set([
+	'stats',
+	'rankings',
+	'standings',
+	'history',
+	'scoreboard',
+	'schedule',
+	'game',
+])
 
 // set cache expiry to 30 min
 const cache = new ExpiryMap(30 * 60 * 1000)
@@ -22,7 +30,7 @@ function log(str: string) {
 
 export const app = new Elysia()
 	// redirect index to github page
-	.get('/', ({ set }) => (set.redirect = 'https://github.com/henrygd/ncaa-api'))
+	.get('/', ({ redirect }) => redirect('https://github.com/henrygd/ncaa-api'))
 	// create a store to hold cache key
 	.state('cacheKey', '')
 	// validate request / set cache key
@@ -43,7 +51,7 @@ export const app = new Elysia()
 		}
 
 		// check that resource is valid
-		if (!validPaths.includes(basePath)) {
+		if (!validPaths.has(basePath)) {
 			set.status = 400
 			throw new Error('Invalid resource')
 		}
@@ -56,6 +64,30 @@ export const app = new Elysia()
 
 		// set cache key
 		store.cacheKey = path + (page ?? '')
+	})
+	// game route to retrieve game details
+	.get('/game/:id?/:page?', async ({ store, params: { id, page } }) => {
+		if (scoreboardCache.has(store.cacheKey)) {
+			return scoreboardCache.get(store.cacheKey)
+		}
+		if (!id) {
+			throw new Error('game id is required')
+		}
+		let resource = 'boxscore'
+		if (page === 'play-by-play') {
+			resource = 'pbp'
+		} else if (page === 'scoring-summary') {
+			resource = 'scoringSummary'
+		} else if (page === 'team-stats') {
+			resource = 'teamStats'
+		}
+		const req = await fetch(`https://data.ncaa.com/casablanca/game/${id}/${resource}.json`)
+		if (!req.ok) {
+			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+		}
+		const data = await req.text()
+		scoreboardCache.set(store.cacheKey, data)
+		return data
 	})
 	// schedule route to retrieve game dates
 	.get('/schedule/:sport/:division/*', async ({ store, params }) => {
