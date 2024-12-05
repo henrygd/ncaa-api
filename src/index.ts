@@ -34,11 +34,14 @@ export const app = new Elysia()
 	// create a store to hold cache key
 	.state('cacheKey', '')
 	// validate request / set cache key
-	.onBeforeHandle({ as: 'global' }, ({ store, set, headers, path, query: { page } }) => {
+	.onBeforeHandle({ as: 'global' }, ({ store, set, request, path, query: { page } }) => {
 		set.headers['Content-Type'] = 'application/json'
 
 		// validate custom header value
-		if (process.env.NCAA_HEADER_KEY && headers['x-ncaa-key'] !== process.env.NCAA_HEADER_KEY) {
+		if (
+			process.env.NCAA_HEADER_KEY &&
+			request.headers.get('x-ncaa-key') !== process.env.NCAA_HEADER_KEY
+		) {
 			set.status = 401
 			throw new Error('Unauthorized')
 		}
