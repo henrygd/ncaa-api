@@ -88,7 +88,7 @@ export const app = new Elysia()
 		if (!req.ok) {
 			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
 		}
-		const data = await req.text()
+		const data = JSON.stringify(await req.json())
 		scoreboardCache.set(store.cacheKey, data)
 		return data
 	})
@@ -107,7 +107,7 @@ export const app = new Elysia()
 			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
 		}
 
-		const data = await req.text()
+		const data = JSON.stringify(await req.json())
 		cache.set(store.cacheKey, data)
 		return data
 	})
@@ -156,12 +156,9 @@ export const app = new Elysia()
 				if (!res.ok) {
 					throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
 				}
-				const data = await res.text()
-
-				// cache data
+				const data = JSON.stringify(await res.json())
 				scoreboardCache.set(store.cacheKey, data)
 				scoreboardCache.set(url, data)
-
 				return data
 			} finally {
 				semUrl.release()
@@ -176,11 +173,8 @@ export const app = new Elysia()
 			return cache.get(store.cacheKey)
 		}
 		// fetch data
-		const data = JSON.stringify(await getData({ path, page }))
-
-		// cache data
+		const data = await getData({ path, page })
 		cache.set(store.cacheKey, data)
-
 		return data
 	})
 	.listen(3000)
