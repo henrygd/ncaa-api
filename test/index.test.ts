@@ -71,6 +71,13 @@ describe('General', () => {
 		expect(data.meta.title).toBe('SCORING')
 		expect(data.meta).toContainKeys(['title', 'teams'])
 	})
+	it('schools index route returns good data', async () => {
+		const response = await app.handle(new Request('http://localhost/schools-index'))
+		expect(response.status).toBe(200)
+		const data = await response.json()
+		expect(data).toBeArray()
+		expect(data[0]).toContainKeys(['slug', 'name', 'long'])
+	})
 	it('re-request uses cached data', async () => {
 		const start = performance.now()
 		await app.handle(new Request('http://localhost/rankings/football/fbs/associated-press'))

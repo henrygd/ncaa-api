@@ -11,6 +11,7 @@ const validPaths = new Set([
 	'scoreboard',
 	'schedule',
 	'game',
+	'schools-index',
 ])
 
 // set cache expiry to 30 min
@@ -67,6 +68,25 @@ export const app = new Elysia()
 
 		// set cache key
 		store.cacheKey = path + (page ?? '')
+	})
+	// schools-index route to return list of all schools
+	.get('/schools-index', async ({ store }) => {
+		if (cache.has(store.cacheKey)) {
+			return cache.get(store.cacheKey)
+		}
+		const req = await fetch('https://www.ncaa.com/json/schools')
+		try {
+			const json = (await req.json()).map((school: Record<string, string>) => ({
+				slug: school.slug,
+				name: school.name,
+				long: school.long_name,
+			}))
+			const data = JSON.stringify(json)
+			cache.set(store.cacheKey, data)
+			return data
+		} catch (err) {
+			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+		}
 	})
 	// game route to retrieve game details
 	.get('/game/:id?/:page?', async ({ store, params: { id, page } }) => {
