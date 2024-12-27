@@ -31,8 +31,16 @@ describe('General', () => {
 		const data = await response.json()
 		expect(data).toContainKey('games')
 	})
-	it('game boxscore route returns good data', async () => {
+	it('base game route returns good data', async () => {
 		const response = await app.handle(new Request('http://localhost/game/6351551'))
+		expect(response.status).toBe(200)
+		const data = await response.json()
+		expect(data).toContainKey('contests')
+		expect(data.contests).toBeArray()
+		expect(data.contests[0]).toContainKeys(['clock', 'gameState', 'linescores'])
+	})
+	it('game boxscore route returns good data', async () => {
+		const response = await app.handle(new Request('http://localhost/game/6351551/boxscore'))
 		expect(response.status).toBe(200)
 		const data = await response.json()
 		expect(data).toContainKey('teams')

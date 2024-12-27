@@ -76,15 +76,27 @@ export const app = new Elysia()
 		if (!id) {
 			throw new Error('game id is required')
 		}
-		let resource = 'boxscore'
-		if (page === 'play-by-play') {
-			resource = 'pbp'
-		} else if (page === 'scoring-summary') {
-			resource = 'scoringSummary'
-		} else if (page === 'team-stats') {
-			resource = 'teamStats'
+		// handle base game route
+		if (!page) {
+			const req = await fetch(
+				`https://sdataprod.ncaa.com/?meta=GetGamecenterGameById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2293a02c7193c89d85bcdda8c1784925d9b64657f73ef584382e2297af555acd4b%22}}&variables={%22id%22:%22${id}%22,%22week%22:null,%22staticTestEnv%22:null}`
+			)
+			if (!req.ok) {
+				throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+			}
+			const data = JSON.stringify((await req.json())?.data)
+			scoreboardCache.set(store.cacheKey, data)
+			return data
 		}
-		const req = await fetch(`https://data.ncaa.com/casablanca/game/${id}/${resource}.json`)
+		// handle other game routes
+		if (page === 'play-by-play') {
+			page = 'pbp'
+		} else if (page === 'scoring-summary') {
+			page = 'scoringSummary'
+		} else if (page === 'team-stats') {
+			page = 'teamStats'
+		}
+		const req = await fetch(`https://data.ncaa.com/casablanca/game/${id}/${page}.json`)
 		if (!req.ok) {
 			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
 		}
