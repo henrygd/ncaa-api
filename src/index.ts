@@ -78,8 +78,8 @@ export const app = new Elysia()
 		try {
 			const json = (await req.json()).map((school: Record<string, string>) => ({
 				slug: school.slug,
-				name: school.name,
-				long: school.long_name,
+				name: school.name?.trim(),
+				long: school.long_name?.trim(),
 			}))
 			const data = JSON.stringify(json)
 			cache.set(store.cacheKey, data)
