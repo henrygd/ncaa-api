@@ -3,22 +3,23 @@ import { parseHTML } from 'linkedom'
 import ExpiryMap from 'expiry-map'
 import { getSemaphore } from '@henrygd/semaphore'
 
-const validPaths = new Set([
-	'stats',
-	'rankings',
-	'standings',
-	'history',
-	'scoreboard',
-	'schedule',
-	'game',
-	'schools-index',
-])
-
 // set cache expiry to 30 min
 const cache = new ExpiryMap(30 * 60 * 1000)
 
 // set scores cache expiry to 1 min
-const scoreboardCache = new ExpiryMap(1 * 60 * 1000)
+const scoresCache = new ExpiryMap(1 * 60 * 1000)
+
+// valid paths for the app with their respective caches
+const validPaths = new Map([
+	['stats', cache],
+	['rankings', cache],
+	['standings', cache],
+	['history', cache],
+	['schedule', cache],
+	['schools-index', cache],
+	['game', scoresCache],
+	['scoreboard', scoresCache],
+])
 
 /** log message to console with timestamp */
 function log(str: string) {
@@ -32,48 +33,39 @@ function log(str: string) {
 export const app = new Elysia()
 	// redirect index to github page
 	.get('/', ({ redirect }) => redirect('https://github.com/henrygd/ncaa-api'))
-	// create a store to hold cache key
-	.state('cacheKey', '')
 	// validate request / set cache key
-	.onBeforeHandle({ as: 'global' }, ({ store, set, request, path, query: { page } }) => {
-		set.headers['Content-Type'] = 'application/json'
-
+	.resolve(({ request, path, error, query: { page } }) => {
 		// validate custom header value
 		if (
 			process.env.NCAA_HEADER_KEY &&
 			request.headers.get('x-ncaa-key') !== process.env.NCAA_HEADER_KEY
 		) {
-			set.status = 401
-			throw new Error('Unauthorized')
+			return error(401)
 		}
-
-		const basePath = path.split('/')[1]
-
-		// if production, set cache control
-		if (process.env.NODE_ENV === 'production') {
-			set.headers['Cache-Control'] = `public, max-age=${basePath === 'scoreboard' ? '60' : '1800'}`
-		}
-
-		// check that resource is valid
-		if (!validPaths.has(basePath)) {
-			set.status = 400
-			throw new Error('Invalid resource')
-		}
-
 		// check that page param is an int
 		if (page && !/^\d+$/.test(page)) {
-			set.status = 400
-			throw new Error('Page parameter must be an integer')
+			return error(400, 'Page parameter must be an integer')
 		}
-
-		// set cache key
-		store.cacheKey = path + (page ?? '')
+		// check that resource is valid
+		const basePath = path.split('/')[1]
+		if (!validPaths.has(basePath)) {
+			return error(400, 'Invalid resource')
+		}
+		return {
+			basePath,
+			cache: validPaths.get(basePath) ?? cache,
+			cacheKey: path + (page ?? ''),
+		}
+	})
+	.onBeforeHandle(({ set, cache, cacheKey }) => {
+		set.headers['Content-Type'] = 'application/json'
+		set.headers['Cache-Control'] = `public, max-age=${cache === scoresCache ? 60 : 1800}`
+		if (cache.has(cacheKey)) {
+			return cache.get(cacheKey)
+		}
 	})
 	// schools-index route to return list of all schools
-	.get('/schools-index', async ({ store }) => {
-		if (cache.has(store.cacheKey)) {
-			return cache.get(store.cacheKey)
-		}
+	.get('/schools-index', async ({ cache, cacheKey }) => {
 		const req = await fetch('https://www.ncaa.com/json/schools')
 		try {
 			const json = (await req.json()).map((school: Record<string, string>) => ({
@@ -82,17 +74,14 @@ export const app = new Elysia()
 				long: school.long_name?.trim(),
 			}))
 			const data = JSON.stringify(json)
-			cache.set(store.cacheKey, data)
+			cache.set(cacheKey, data)
 			return data
 		} catch (err) {
 			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
 		}
 	})
 	// game route to retrieve game details
-	.get('/game/:id?/:page?', async ({ store, params: { id, page } }) => {
-		if (scoreboardCache.has(store.cacheKey)) {
-			return scoreboardCache.get(store.cacheKey)
-		}
+	.get('/game/:id?/:page?', async ({ cache, cacheKey, params: { id, page } }) => {
 		if (!id) {
 			throw new Error('game id is required')
 		}
@@ -105,7 +94,7 @@ export const app = new Elysia()
 				throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
 			}
 			const data = JSON.stringify((await req.json())?.data)
-			scoreboardCache.set(store.cacheKey, data)
+			cache.set(cacheKey, data)
 			return data
 		}
 		// handle other game routes
@@ -121,14 +110,11 @@ export const app = new Elysia()
 			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
 		}
 		const data = JSON.stringify(await req.json())
-		scoreboardCache.set(store.cacheKey, data)
+		cache.set(cacheKey, data)
 		return data
 	})
 	// schedule route to retrieve game dates
-	.get('/schedule/:sport/:division/*', async ({ store, params }) => {
-		if (cache.has(store.cacheKey)) {
-			return cache.get(store.cacheKey)
-		}
+	.get('/schedule/:sport/:division/*', async ({ cache, cacheKey, params }) => {
 		const { sport, division } = params
 
 		const req = await fetch(
@@ -140,17 +126,17 @@ export const app = new Elysia()
 		}
 
 		const data = JSON.stringify(await req.json())
-		cache.set(store.cacheKey, data)
+		cache.set(cacheKey, data)
 		return data
 	})
 	// scoreboard route to fetch data from data.ncaa.com json endpoint
-	.get('/scoreboard/:sport/*', async ({ store, params, set }) => {
-		const semCacheKey = getSemaphore(store.cacheKey)
+	.get('/scoreboard/:sport/*', async ({ cache, cacheKey, params, set }) => {
+		const semCacheKey = getSemaphore(cacheKey)
 		await semCacheKey.acquire()
 		try {
-			if (scoreboardCache.has(store.cacheKey)) {
+			if (cache.has(cacheKey)) {
 				set.headers['x-score-cache'] = 'hit'
-				return scoreboardCache.get(store.cacheKey)
+				return cache.get(cacheKey)
 			}
 
 			// get division from url
@@ -178,9 +164,9 @@ export const app = new Elysia()
 			await semUrl.acquire()
 			try {
 				// check cache
-				if (scoreboardCache.has(url)) {
+				if (cache.has(url)) {
 					set.headers['x-score-cache'] = 'hit'
-					return scoreboardCache.get(url)
+					return cache.get(url)
 				}
 				// fetch data
 				log(`Fetching ${url}`)
@@ -189,8 +175,8 @@ export const app = new Elysia()
 					throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
 				}
 				const data = JSON.stringify(await res.json())
-				scoreboardCache.set(store.cacheKey, data)
-				scoreboardCache.set(url, data)
+				cache.set(cacheKey, data)
+				cache.set(url, data)
 				return data
 			} finally {
 				semUrl.release()
@@ -200,13 +186,13 @@ export const app = new Elysia()
 		}
 	})
 	// all other routes fetch data by scraping ncaa.com
-	.get('/*', async ({ query: { page }, path, store }) => {
-		if (cache.has(store.cacheKey)) {
-			return cache.get(store.cacheKey)
+	.get('/*', async ({ query: { page }, path, cache, cacheKey }) => {
+		if (cache.has(cacheKey)) {
+			return cache.get(cacheKey)
 		}
 		// fetch data
 		const data = await getData({ path, page })
-		cache.set(store.cacheKey, data)
+		cache.set(cacheKey, data)
 		return data
 	})
 	.listen(3000)
