@@ -19,6 +19,7 @@ describe('General', () => {
 			new Request('http://localhost/rankings/football/fbs/associated-press')
 		)
 		expect(response.status).toBe(200)
+		expect(response.headers.get('cache-control')).toBe('public, max-age=1800')
 		const { data } = await response.json()
 		expect(data.length).toBeGreaterThan(0)
 		expect(data[0]).toContainKeys(['RANK', 'SCHOOL'])
@@ -28,12 +29,14 @@ describe('General', () => {
 			new Request('http://localhost/scoreboard/basketball-men/d1/2024/01/01')
 		)
 		expect(response.status).toBe(200)
+		expect(response.headers.get('cache-control')).toBe('public, max-age=60')
 		const data = await response.json()
 		expect(data).toContainKey('games')
 	})
 	it('base game route returns good data', async () => {
 		const response = await app.handle(new Request('http://localhost/game/6351551'))
 		expect(response.status).toBe(200)
+		expect(response.headers.get('cache-control')).toBe('public, max-age=60')
 		const data = await response.json()
 		expect(data).toContainKey('contests')
 		expect(data.contests).toBeArray()
@@ -42,6 +45,7 @@ describe('General', () => {
 	it('game boxscore route returns good data', async () => {
 		const response = await app.handle(new Request('http://localhost/game/6351551/boxscore'))
 		expect(response.status).toBe(200)
+		expect(response.headers.get('cache-control')).toBe('public, max-age=60')
 		const data = await response.json()
 		expect(data).toContainKey('teams')
 		expect(data.meta.title).toContain('oxscore')
@@ -50,6 +54,7 @@ describe('General', () => {
 	it('game play by play route returns good data', async () => {
 		const response = await app.handle(new Request('http://localhost/game/6305900/play-by-play'))
 		expect(response.status).toBe(200)
+		expect(response.headers.get('cache-control')).toBe('public, max-age=60')
 		const data = await response.json()
 		expect(data).toContainKey('periods')
 		expect(data.meta.title).toBe('PLAY-BY-PLAY')
@@ -58,6 +63,7 @@ describe('General', () => {
 	it('game team stats route returns good data', async () => {
 		const response = await app.handle(new Request('http://localhost/game/6305900/team-stats'))
 		expect(response.status).toBe(200)
+		expect(response.headers.get('cache-control')).toBe('public, max-age=60')
 		const data = await response.json()
 		expect(data).toContainKey('teams')
 		expect(data.meta.title).toBe('TEAM STATS')
@@ -66,6 +72,7 @@ describe('General', () => {
 	it('game scoring summary route returns good data', async () => {
 		const response = await app.handle(new Request('http://localhost/game/6305900/scoring-summary'))
 		expect(response.status).toBe(200)
+		expect(response.headers.get('cache-control')).toBe('public, max-age=60')
 		const data = await response.json()
 		expect(data).toContainKey('periods')
 		expect(data.meta.title).toBe('SCORING')
@@ -74,6 +81,7 @@ describe('General', () => {
 	it('schools index route returns good data', async () => {
 		const response = await app.handle(new Request('http://localhost/schools-index'))
 		expect(response.status).toBe(200)
+		expect(response.headers.get('cache-control')).toBe('public, max-age=1800')
 		const data = await response.json()
 		expect(data).toBeArray()
 		expect(data[0]).toContainKeys(['slug', 'name', 'long'])
@@ -124,7 +132,9 @@ describe('Header validation', () => {
 	})
 	it('invalid custom header returns 401', async () => {
 		const response = await app.handle(
-			new Request('http://localhost/test', { headers: { 'x-ncaa-key': 'invalid' } })
+			new Request('http://localhost/rankings/football/fbs/associated-press', {
+				headers: { 'x-ncaa-key': 'invalid' },
+			})
 		)
 		expect(response.status).toBe(401)
 	})
