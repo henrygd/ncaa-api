@@ -65,7 +65,7 @@ export const app = new Elysia()
 		}
 	})
 	// schools-index route to return list of all schools
-	.get('/schools-index', async ({ cache, cacheKey }) => {
+	.get('/schools-index', async ({ cache, cacheKey, error }) => {
 		const req = await fetch('https://www.ncaa.com/json/schools')
 		try {
 			const json = (await req.json()).map((school: Record<string, string>) => ({
@@ -77,13 +77,13 @@ export const app = new Elysia()
 			cache.set(cacheKey, data)
 			return data
 		} catch (err) {
-			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+			return error(500, 'Error fetching data')
 		}
 	})
 	// game route to retrieve game details
-	.get('/game/:id?/:page?', async ({ cache, cacheKey, params: { id, page } }) => {
+	.get('/game/:id?/:page?', async ({ cache, cacheKey, error, params: { id, page } }) => {
 		if (!id) {
-			throw new Error('game id is required')
+			return error(400, 'Game id is required')
 		}
 		// handle base game route
 		if (!page) {
@@ -91,7 +91,7 @@ export const app = new Elysia()
 				`https://sdataprod.ncaa.com/?meta=GetGamecenterGameById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2293a02c7193c89d85bcdda8c1784925d9b64657f73ef584382e2297af555acd4b%22}}&variables={%22id%22:%22${id}%22,%22week%22:null,%22staticTestEnv%22:null}`
 			)
 			if (!req.ok) {
-				throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+				return error(404, 'Resource not found')
 			}
 			const data = JSON.stringify((await req.json())?.data)
 			cache.set(cacheKey, data)
@@ -107,14 +107,14 @@ export const app = new Elysia()
 		}
 		const req = await fetch(`https://data.ncaa.com/casablanca/game/${id}/${page}.json`)
 		if (!req.ok) {
-			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+			return error(404, 'Resource not found')
 		}
 		const data = JSON.stringify(await req.json())
 		cache.set(cacheKey, data)
 		return data
 	})
 	// schedule route to retrieve game dates
-	.get('/schedule/:sport/:division/*', async ({ cache, cacheKey, params }) => {
+	.get('/schedule/:sport/:division/*', async ({ cache, cacheKey, params, error }) => {
 		const { sport, division } = params
 
 		const req = await fetch(
@@ -122,7 +122,7 @@ export const app = new Elysia()
 		)
 
 		if (!req.ok) {
-			throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+			return error(404, 'Resource not found')
 		}
 
 		const data = JSON.stringify(await req.json())
@@ -130,7 +130,7 @@ export const app = new Elysia()
 		return data
 	})
 	// scoreboard route to fetch data from data.ncaa.com json endpoint
-	.get('/scoreboard/:sport/*', async ({ cache, cacheKey, params, set }) => {
+	.get('/scoreboard/:sport/*', async ({ cache, cacheKey, params, set, error }) => {
 		const semCacheKey = getSemaphore(cacheKey)
 		await semCacheKey.acquire()
 		try {
@@ -150,8 +150,7 @@ export const app = new Elysia()
 				// return 400 if date is more than a year in the future
 				// (had runaway bot requesting every day until I noticed it in 2195)
 				if (new Date(urlDate).getFullYear() > new Date().getFullYear() + 1) {
-					set.status = 400
-					throw new Error('Invalid date')
+					return error(400, 'Invalid date')
 				}
 			} else {
 				// if date not in passed in url, fetch date from today.json
@@ -172,7 +171,7 @@ export const app = new Elysia()
 				log(`Fetching ${url}`)
 				const res = await fetch(url)
 				if (!res.ok) {
-					throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
+					return error(404, 'Resource not found')
 				}
 				const data = JSON.stringify(await res.json())
 				cache.set(cacheKey, data)
