@@ -4,21 +4,21 @@ import ExpiryMap from 'expiry-map'
 import { getSemaphore } from '@henrygd/semaphore'
 
 // set cache expiry to 30 min
-const cache = new ExpiryMap(30 * 60 * 1000)
+const cache_30m = new ExpiryMap(30 * 60 * 1000)
 
 // set scores cache expiry to 1 min
-const scoresCache = new ExpiryMap(1 * 60 * 1000)
+const cache_1m = new ExpiryMap(1 * 60 * 1000)
 
-// valid paths for the app with their respective caches
-const validPaths = new Map([
-	['stats', cache],
-	['rankings', cache],
-	['standings', cache],
-	['history', cache],
-	['schedule', cache],
-	['schools-index', cache],
-	['game', scoresCache],
-	['scoreboard', scoresCache],
+// valid routes for the app with their respective caches
+const validRoutes = new Map([
+	['stats', cache_30m],
+	['rankings', cache_30m],
+	['standings', cache_30m],
+	['history', cache_30m],
+	['schedule', cache_30m],
+	['schools-index', cache_30m],
+	['game', cache_1m],
+	['scoreboard', cache_1m],
 ])
 
 /** log message to console with timestamp */
@@ -48,18 +48,18 @@ export const app = new Elysia()
 		}
 		// check that resource is valid
 		const basePath = path.split('/')[1]
-		if (!validPaths.has(basePath)) {
+		if (!validRoutes.has(basePath)) {
 			return error(400, 'Invalid resource')
 		}
 		return {
 			basePath,
-			cache: validPaths.get(basePath) ?? cache,
+			cache: validRoutes.get(basePath) ?? cache_1m,
 			cacheKey: path + (page ?? ''),
 		}
 	})
 	.onBeforeHandle(({ set, cache, cacheKey }) => {
 		set.headers['Content-Type'] = 'application/json'
-		set.headers['Cache-Control'] = `public, max-age=${cache === scoresCache ? 60 : 1800}`
+		set.headers['Cache-Control'] = `public, max-age=${cache === cache_1m ? 60 : 1800}`
 		if (cache.has(cacheKey)) {
 			return cache.get(cacheKey)
 		}
@@ -210,8 +210,8 @@ log(`Server is running at ${app.server?.url}`)
 async function getTodayUrl(sport: string, division: string): Promise<string> {
 	// check cache
 	const cacheKey = `today-${sport}-${division}`
-	if (cache.has(cacheKey)) {
-		return cache.get(cacheKey)
+	if (cache_30m.has(cacheKey)) {
+		return cache_30m.get(cacheKey)
 	}
 	log(`Fetching today.json for ${sport} ${division}`)
 	const req = await fetch(
@@ -221,7 +221,7 @@ async function getTodayUrl(sport: string, division: string): Promise<string> {
 		throw new NotFoundError(JSON.stringify({ message: 'Resource not found' }))
 	}
 	const data = await req.json()
-	cache.set(cacheKey, data.today)
+	cache_30m.set(cacheKey, data.today)
 	return data.today as string
 }
 
