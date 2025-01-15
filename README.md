@@ -6,11 +6,13 @@ Works with scores, stats, rankings, standings, schedules, history, and game deta
 
 ## Usage
 
-Make a GET request using the same path as the URL on the NCAA website. You'll get a JSON response with the data.
+Make a GET request using the same path as the URL on ncaa.com. You'll get a JSON response with the data.
 
-You can test the API using the example site below. [Host your own](#deployment) if you need it to be reliable long term.
+You can test using the demo API below. [Host your own](#deployment) if you need it to be reliable long term.
 
 https://ncaa-api.henrygd.me/rankings/football/fbs/associated-press
+
+> Note: The public API is limited to 5 requests per second per IP.
 
 ## Parameters
 
