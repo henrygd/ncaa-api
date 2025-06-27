@@ -1,5 +1,7 @@
 # NCAA API
 
+Test
+
 Free API to return consumable data from ncaa.com.
 
 Works with scores, stats, rankings, standings, schedules, history, and game details (box score, play by play, scoring summary, team stats).
