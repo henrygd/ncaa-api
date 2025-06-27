@@ -19,6 +19,7 @@ const validRoutes = new Map([
 	['schools-index', cache_30m],
 	['game', cache_1m],
 	['scoreboard', cache_1m],
+	['teams', cache_1m]
 ])
 
 /** log message to console with timestamp */
@@ -48,7 +49,8 @@ export const app = new Elysia()
 		}
 		// check that resource is valid
 		const basePath = path.split('/')[1]
-		if (!validRoutes.has(basePath)) {
+
+		if (!validRoutes.has(basePath) && basePath!='teams') {
 			return error(400, 'Invalid resource')
 		}
 		return {
@@ -80,6 +82,40 @@ export const app = new Elysia()
 			return error(500, 'Error fetching data')
 		}
 	})
+	// team's schedule
+	.get('/teams/:id', async ({ cache, cacheKey, error, params: { id } }) => {
+		if (!id) return error(400, 'Team id is required')
+	
+		const url = `https://stats.ncaa.org/teams/${id}` // gets team page
+		const req = await fetch(url)
+		if (!req.ok) return error(404, 'Team page not found')
+	
+		const html = await req.text()
+		const { document } = parseHTML(html)
+	
+		const table = document.querySelector('table')
+		if (!table) return error(500, 'Could not find schedule table')
+
+		const rows = table.querySelectorAll('tbody tr.underline_rows')
+
+		const schedule = Array.from(rows).map(row => {
+			const cells = row.querySelectorAll('td')		// gets all rows 
+
+			const date = cells[0]?.textContent?.trim() ?? ''
+			const opponent = cells[1]?.querySelector('a')?.textContent?.trim() ?? ''
+			const result = cells[2]?.querySelector('a')?.textContent?.trim() ?? ''
+			const boxScoreHref = cells[2]?.querySelector('a')?.getAttribute('href') ?? ''
+			const box_score_url = boxScoreHref ? `https://stats.ncaa.org${boxScoreHref}` : ''
+			const attendance = cells[3]?.textContent?.trim() ?? ''
+			log("6")
+			return { date, opponent, result, box_score_url, attendance }
+		})
+		
+		const result = JSON.stringify(schedule)
+		cache.set(cacheKey, result)
+		return result
+	})
+
 	// game route to retrieve game details
 	.get('/game/:id?/:page?', async ({ cache, cacheKey, error, params: { id, page } }) => {
 		if (!id) {
