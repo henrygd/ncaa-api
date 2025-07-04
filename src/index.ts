@@ -19,6 +19,7 @@ const validRoutes = new Map([
 	['schools-index', cache_30m],
 	['game', cache_1m],
 	['scoreboard', cache_1m],
+	['org', cache_30m]
 ])
 
 /** log message to console with timestamp */
@@ -48,6 +49,7 @@ export const app = new Elysia()
 		}
 		// check that resource is valid
 		const basePath = path.split('/')[1]
+
 		if (!validRoutes.has(basePath)) {
 			return error(400, 'Invalid resource')
 		}
@@ -80,6 +82,223 @@ export const app = new Elysia()
 			return error(500, 'Error fetching data')
 		}
 	})
+	.get('/org/playbyplay/:game_id', async ({ cache, cacheKey, error, params: { game_id } }) => {
+		if (!game_id) return error(400, 'Game ID is required')
+	  
+		const url = `https://stats.ncaa.org/contests/${game_id}/play_by_play`
+	  
+		const res = await fetch(url)
+		if (!res.ok) return error(404, 'Game page not found')
+	  
+		const html = await res.text()
+		const { document } = parseHTML(html)
+	  
+		const quarterHeaders = Array.from(document.querySelectorAll('.card-header'))
+		const allTables = Array.from(document.querySelectorAll('table.table'))
+	  
+		const stats = []
+		const periodNumbers = []
+	  
+		for (let i = 0; i < quarterHeaders.length; i++) {
+		  const header = quarterHeaders[i]
+		  const table = allTables[i]
+	  
+		  if (!header || !table) continue
+	  
+		  // extract "1st Quarter", "2nd Quarter", etc.
+		  const periodLabel = header.textContent?.trim()
+		  const match = periodLabel?.match(/(\d+)/)
+		  const period = match ? parseInt(match[1]) : i + 1
+	  
+		  periodNumbers.push(period)
+	  
+		  const rows = Array.from(table.querySelectorAll('tbody tr'))
+	  
+		  for (const row of rows) {
+			const cells = Array.from(row.querySelectorAll('td')).map((td) =>
+			  td.textContent?.trim()
+			)
+	  
+			if (cells.length === 4) {
+			  stats.push({
+				period,
+				time: cells[0],
+				team1: cells[1],
+				score: cells[2],
+				team2: cells[3]
+			  })
+			}
+		  }
+		}
+	  
+		const data = 
+		{
+			game: game_id,
+			stats
+		}
+
+  		cache.set(cacheKey, data)
+
+		return data
+	  })
+	// team's schedule
+	.get('org/teams/:id', async ({ cache, cacheKey, error, params: { id } }) => {
+		if (!id) return error(400, 'Team id is required')
+	
+		const url = `https://stats.ncaa.org/teams/${id}` // gets team page
+		const req = await fetch(url)
+		if (!req.ok) return error(404, 'Team page not found')
+	
+		const html = await req.text()
+		const { document } = parseHTML(html)
+	
+		const table = document.querySelector('table')
+		if (!table) return error(500, 'Could not find schedule table')
+
+		const rows = table.querySelectorAll('tbody tr.underline_rows')
+
+		const schedule = Array.from(rows).map(row => {
+			const cells = row.querySelectorAll('td')		// gets all rows 
+
+			const date = cells[0]?.textContent?.trim() ?? ''
+			const opponent = cells[1]?.querySelector('a')?.textContent?.trim() ?? ''
+			const result = cells[2]?.querySelector('a')?.textContent?.trim() ?? ''
+			const boxScoreHref = cells[2]?.querySelector('a')?.getAttribute('href') ?? ''
+			const box_score_url = boxScoreHref ? `https://stats.ncaa.org${boxScoreHref}` : ''
+			const attendance = cells[3]?.textContent?.trim() ?? ''
+			return { date, opponent, result, box_score_url, attendance }
+		})
+		
+		const result = JSON.stringify(schedule)
+		cache.set(cacheKey, result)
+		return result
+	})
+	// PARARMS:
+	// home = home team name
+	// away = away team name 
+	// date = date game takes place MM-DD-YYY format
+	// sport = wlax or mlax 
+	// divsion = 1, 2, or 3 
+	.get('/org/gameid/:home/:away/:date/:sport?/:division?', async ({ cache, cacheKey, params, error }) => {
+		const { home, away, date } = params
+		const sport = params.sport || 'mlax'
+		const division = params.division || '1'
+	  
+		if (!away) return error(400, 'Away team name is required')
+		if (!home) return error(400, 'Home team name is required')
+		if (!date) return error(400, 'Date is required')
+	
+		// parse date in MM-DD-YYYY format
+		const [monthStr, dayStr, yearStr] = date.split('-')
+		if (!monthStr || !dayStr || !yearStr) return error(400, 'Invalid date format')
+	
+		const inputDate = new Date(`${yearStr}-${monthStr}-${dayStr}`)
+		const now = new Date()
+	
+		if (isNaN(inputDate.getTime())) return error(400, 'Invalid date')
+		if (parseInt(yearStr) < 2024) return error(402, 'Date is too early')
+		if (inputDate > now) return error(403, "Date hasn't happened yet")
+	
+		// determine season label
+		let yearLabel: string
+		if (yearStr === '2025') {
+			yearLabel = '24-25'
+		} else if (yearStr === '2024') {
+			yearLabel = '23-24'
+		} else {
+			return error(400, 'Unsupported season year')
+		}
+	
+		// determine gender
+		let gender: string
+		if (sport === 'mlax') gender = 'M'
+		else if (sport === 'wlax') gender = 'F'
+		else return error(400, 'Sport must be mlax or wlax')
+	
+		// parse division
+		const div = parseInt(division)
+		if (![1, 2, 3].includes(div)) return error(400, 'Division must be 1, 2, or 3')
+	
+		// manually assign season_division_id
+		let seasonId: number | null = null
+	
+		if (yearLabel === '24-25') {
+			if (div === 1 && gender === 'M') seasonId = 18484
+			else if (div === 2 && gender === 'M') seasonId = 18485
+			else if (div === 3 && gender === 'M') seasonId = 18487
+			else if (div === 1 && gender === 'F') seasonId = 18483
+			else if (div === 2 && gender === 'F') seasonId = 18486
+			else if (div === 3 && gender === 'F') seasonId = 18488
+		}
+	
+		if (yearLabel === '23-24') {
+			if (div === 1 && gender === 'M') seasonId = 18240
+			else if (div === 2 && gender === 'M') seasonId = 18241
+			else if (div === 3 && gender === 'M') seasonId = 18242
+			else if (div === 1 && gender === 'F') seasonId = 18260
+			else if (div === 2 && gender === 'F') seasonId = 18262
+			else if (div === 3 && gender === 'F') seasonId = 18263
+		}
+	
+		if (!seasonId) return error(400, 'Could not find season division ID')
+	
+	
+		const url = `https://stats.ncaa.org/contests/livestream_scoreboards?utf8=✓&season_division_id=${seasonId}&game_date=${monthStr}%2F${dayStr}%2F${yearStr}conference_id=0&tournament_id=&commit=Submit`
+			
+		const res = await fetch(url)
+		if (!res.ok) return error(404, 'Could not fetch scoreboard page')
+
+		const html = await res.text()
+		const { document } = parseHTML(html)
+
+		// Find all tables
+		const tables = document.querySelectorAll('table')
+
+		let foundHref: string | null = null
+
+		for (const table of tables) {
+			const cells = Array.from(table.querySelectorAll('td')).map((td) =>
+			td.textContent?.trim()
+			)
+
+			const team1Match = cells.some((text) =>
+			text?.toLowerCase().includes(home.toLowerCase())
+			)
+			const team2Match = cells.some((text) =>
+			text?.toLowerCase().includes(away.toLowerCase())
+			)
+
+			if (team1Match && team2Match) {
+			const boxLink = Array.from(table.querySelectorAll('a')).find(
+				(a) => a.textContent?.trim() === 'Box Score'
+			)
+
+			if (boxLink) {
+				foundHref = boxLink.getAttribute('href')
+				break
+			}
+			}
+		}
+
+		if (!foundHref) {
+			return error(404, `No game found between "${home}" and "${away}" on ${date}`)
+		}
+
+		// Extract numeric game ID from URL
+		const idMatch = foundHref.match(/\/(\d+)\//)
+		const gameId = idMatch ? idMatch[1] : null
+
+		if (!gameId) {
+			return error(500, 'Box score found but could not extract game ID')
+		}
+
+		const data = {
+			game_id: gameId
+		}
+
+		cache.set(cacheKey, data)
+		return data
+		})
 	// game route to retrieve game details
 	.get('/game/:id?/:page?', async ({ cache, cacheKey, error, params: { id, page } }) => {
 		if (!id) {
