@@ -82,9 +82,65 @@ export const app = new Elysia()
 			return error(500, 'Error fetching data')
 		}
 	})
+	.get('/org/playbyplay/:game_id', async ({ cache, cacheKey, error, params: { game_id } }) => {
+		if (!game_id) return error(400, 'Game ID is required')
+	  
+		const url = `https://stats.ncaa.org/contests/${game_id}/play_by_play`
+	  
+		const res = await fetch(url)
+		if (!res.ok) return error(404, 'Game page not found')
+	  
+		const html = await res.text()
+		const { document } = parseHTML(html)
+	  
+		const quarterHeaders = Array.from(document.querySelectorAll('.card-header'))
+		const allTables = Array.from(document.querySelectorAll('table.table'))
+	  
+		const stats = []
+		const periodNumbers = []
+	  
+		for (let i = 0; i < quarterHeaders.length; i++) {
+		  const header = quarterHeaders[i]
+		  const table = allTables[i]
+	  
+		  if (!header || !table) continue
+	  
+		  // extract "1st Quarter", "2nd Quarter", etc.
+		  const periodLabel = header.textContent?.trim()
+		  const match = periodLabel?.match(/(\d+)/)
+		  const period = match ? parseInt(match[1]) : i + 1
+	  
+		  periodNumbers.push(period)
+	  
+		  const rows = Array.from(table.querySelectorAll('tbody tr'))
+	  
+		  for (const row of rows) {
+			const cells = Array.from(row.querySelectorAll('td')).map((td) =>
+			  td.textContent?.trim()
+			)
+	  
+			if (cells.length === 4) {
+			  stats.push({
+				period,
+				time: cells[0],
+				team1: cells[1],
+				score: cells[2],
+				team2: cells[3]
+			  })
+			}
+		  }
+		}
+	  
+		const data = 
+		{
+			game: game_id,
+			stats
+		}
 
+  		cache.set(cacheKey, data)
 
-	
+		return data
+	  })
 	// team's schedule
 	.get('org/teams/:id', async ({ cache, cacheKey, error, params: { id } }) => {
 		if (!id) return error(400, 'Team id is required')
@@ -117,20 +173,19 @@ export const app = new Elysia()
 		cache.set(cacheKey, result)
 		return result
 	})
-	
-
-
 	// PARARMS:
 	// home = home team name
 	// away = away team name 
 	// date = date game takes place MM-DD-YYY format
 	// sport = wlax or mlax 
 	// divsion = 1, 2, or 3 
-	.get('/org/gameid/:home/:away/:date/:sport/:division/', async ({ cache, cacheKey, error, params: { home, away, date, sport, division } }) => {
+	.get('/org/gameid/:home/:away/:date/:sport?/:division?', async ({ cache, cacheKey, params, error }) => {
+		const { home, away, date } = params
+		const sport = params.sport || 'mlax'
+		const division = params.division || '1'
+	  
 		if (!away) return error(400, 'Away team name is required')
 		if (!home) return error(400, 'Home team name is required')
-		if (!sport) return error(400, 'Sport is required (mlax or wlax)')
-		if (!division) return error(400, 'Division is required')
 		if (!date) return error(400, 'Date is required')
 	
 		// parse date in MM-DD-YYYY format
@@ -238,17 +293,12 @@ export const app = new Elysia()
 		}
 
 		const data = {
-			game_id: gameId,
-			box_score_url: `https://stats.ncaa.org${foundHref}`,
-			fetched_from: url
+			game_id: gameId
 		}
 
 		cache.set(cacheKey, data)
 		return data
 		})
-
-	
-
 	// game route to retrieve game details
 	.get('/game/:id?/:page?', async ({ cache, cacheKey, error, params: { id, page } }) => {
 		if (!id) {
