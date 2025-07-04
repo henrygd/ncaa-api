@@ -7,9 +7,9 @@
 	},
 	"dependencies": {
 		"@henrygd/semaphore": "^0.0.2",
-		"elysia": "^1.2.10",
+		"elysia": "^1.3.5",
 		"expiry-map": "^2.0.0",
-		"linkedom": "^0.18.6"
+		"linkedom": "^0.18.11"
 	},
 	"devDependencies": {
 		"bun-types": "latest"
