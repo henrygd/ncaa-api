@@ -2,6 +2,9 @@ import { Elysia, NotFoundError } from "elysia";
 import { parseHTML } from "linkedom";
 import ExpiryMap from "expiry-map";
 import { getSemaphore } from "@henrygd/semaphore";
+import { createHash } from "crypto";
+
+const instance_id = createHash("md5").digest("hex");
 
 // set cache expiry to 30 min
 const cache_30m = new ExpiryMap(30 * 60 * 1000);
@@ -156,6 +159,57 @@ export const app = new Elysia()
         // get division from url
         const division = params["*"].split("/")[0];
 
+        // Parse URL path to extract year and week parameters for new football endpoint (TEMPORARY)
+        const pathParts = params["*"].split("/");
+        const year = pathParts[1]; // e.g., "2025"
+
+        // Check if we should use new endpoint for D1 football in 2025
+        if (shouldUseNewEndpoint(params.sport, division, year)) {
+          const weekParam = pathParts[2]; // e.g., "1" or "week"
+          const weekValue = pathParts[3]; // e.g., "1" if weekParam is "week"
+          try {
+            // Parse week parameter - support both direct week numbers and /week/X format
+            let week: number | undefined = undefined;
+            if (weekParam && !isNaN(parseInt(weekParam))) {
+              // Direct week number: /2025/1
+              week = parseInt(weekParam);
+            } else if (
+              weekParam === "week" &&
+              weekValue &&
+              !isNaN(parseInt(weekValue))
+            ) {
+              // Week format: /2025/week/1
+              week = parseInt(weekValue);
+            } else {
+              // Default to current week or week 1 if no week specified
+              week = 1;
+            }
+
+            log(
+              `Fetching football scoreboard from new endpoint for ${year}, week ${week}`
+            );
+
+            const contestDate = undefined;
+
+            const newData = await fetchFootballScoreboard(
+              "MFB",
+              11,
+              parseInt(year),
+              week,
+              contestDate
+            );
+            const convertedData = convertToOldFormat(newData);
+            const data = JSON.stringify(convertedData);
+            cache.set(cacheKey, data);
+            return data;
+          } catch (err) {
+            log(
+              `Failed to fetch from new endpoint, falling back to old endpoint: ${err}`
+            );
+            // Fall through to old endpoint logic
+          }
+        }
+
         // find date in url
         const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/;
         let urlDate = params["*"].match(urlDateMatcher)?.[0];
@@ -216,6 +270,149 @@ log(`Server is running at ${app.server?.url}`);
 //////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// FUNCTIONS ////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Fetch football scoreboard data from new NCAA GraphQL endpoint
+ * @param sport - sport code (e.g., 'MFB' for football)
+ * @param division - division number
+ * @param seasonYear - season year
+ * @param week - week number (optional)
+ * @param contestDate - specific date (optional)
+ */
+async function fetchFootballScoreboard(
+  sport: string,
+  division: number,
+  seasonYear: number,
+  week?: number,
+  contestDate?: string
+) {
+  const variables = {
+    sportCode: sport,
+    division,
+    seasonYear,
+    contestDate,
+    week,
+  };
+
+  const url = `https://sdataprod.ncaa.com/?meta=GetContests_web&extensions={"persistedQuery":{"version":1,"sha256Hash":"7287cda610a9326931931080cb3a604828febe6fe3c9016a7e4a36db99efdb7c"}}&variables=${encodeURIComponent(
+    JSON.stringify(variables)
+  )}`;
+
+  const req = await fetch(url);
+  if (!req.ok) {
+    throw new Error("Failed to fetch football scoreboard data");
+  }
+
+  const response = await req.json();
+  return response;
+}
+
+/**
+ * Convert new NCAA GraphQL format to old format for backwards compatibility
+ * @param newData - data from new GraphQL endpoint
+ * @returns data in old format
+ */
+function convertToOldFormat(newData: any) {
+  // Helper function to normalize game state to compatible values
+  const normalizeGameState = (gameState: string): string => {
+    switch (gameState) {
+      case "F":
+        return "final";
+      case "P":
+        return "pre";
+      case "I":
+        return "live";
+      default:
+        return "pre"; // Default to pre for unknown states
+    }
+  };
+
+  const contests = newData?.data?.contests || [];
+  const games = contests
+    .map((contest: any) => {
+      const teams = contest.teams || [];
+      const homeTeam = teams.find((team: any) => team.isHome);
+      const awayTeam = teams.find((team: any) => !team.isHome);
+
+      if (!homeTeam || !awayTeam) {
+        return null;
+      }
+
+      // Helper function to format team data
+      const formatTeam = (team: any, isWinner: boolean) => ({
+        score: team.score?.toString() || "",
+        names: {
+          char6: team.name6Char || "",
+          short: team.nameShort || "",
+          seo: team.seoname || "",
+          full: "", // New format doesn't have full name, we'll leave empty
+        },
+        winner: isWinner,
+        seed: team.seed?.toString() || "",
+        description: "", // New format doesn't have description
+        rank: team.teamRank?.toString() || "",
+        conferences: [
+          {
+            conferenceName: "", // New format doesn't have conference name
+            conferenceSeo: team.conferenceSeo || "",
+          },
+        ],
+      });
+
+      // Determine winner
+      const isHomeWinner = homeTeam.isWinner;
+      const isAwayWinner = awayTeam.isWinner;
+
+      return {
+        game: {
+          gameID: contest.contestId?.toString() || "",
+          away: formatTeam(awayTeam, isAwayWinner),
+          finalMessage: contest.finalMessage || "",
+          bracketRound: "",
+          title: contest.teams
+            ? `${awayTeam.nameShort || ""} ${homeTeam.nameShort || ""}`
+            : "",
+          contestName: "",
+          url: contest.url || "",
+          network: contest.broadcasterName || "",
+          home: formatTeam(homeTeam, isHomeWinner),
+          liveVideoEnabled: (contest.liveVideos || []).length > 0,
+          startTime: contest.startTime || "",
+          startTimeEpoch: contest.startTimeEpoch?.toString() || "",
+          bracketId: "",
+          gameState: normalizeGameState(contest.gameState || ""),
+          startDate: contest.startDate || "",
+          currentPeriod: contest.currentPeriod || "",
+          videoState: "",
+          bracketRegion: "",
+          contestClock: contest.contestClock || "0:00",
+        },
+      };
+    })
+    .filter(Boolean);
+
+  // Generate MD5 sum of the games data for backwards compatibility
+  const gamesString = JSON.stringify(games);
+  const md5Sum = createHash("md5").update(gamesString).digest("hex");
+
+  return {
+    inputMD5Sum: md5Sum,
+    instanceId: instance_id,
+    updated_at: new Date().toISOString().replace("T", " ").substring(0, 19),
+    games,
+  };
+}
+
+/**
+ * Check if this is a D1 football request that should use new endpoint
+ * @param sport - sport parameter
+ * @param division - division parameter
+ * @param year - year from URL (optional)
+ * @returns boolean indicating if new endpoint should be used
+ */
+function shouldUseNewEndpoint(sport: string, division: string, year?: string) {
+  return sport === "football" && division === "fbs" && year === "2025";
+}
 
 /**
  * Fetch proper url date for today from ncaa.com
