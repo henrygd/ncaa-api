@@ -120,7 +120,7 @@ describe("General", () => {
     // should be replace with whatever sport has the longest until it starts again
     const routes = [
       "/scoreboard/baseball/d1",
-      "/scoreboard/baseball/d1/2024/06/24/all-conf",
+      "/scoreboard/baseball/d1/2025/06/22/all-conf",
     ];
     for (let i = 0; i < 3; i++) {
       for (const route of routes) {
