@@ -198,7 +198,11 @@ export const app = new Elysia()
               week,
               contestDate
             );
-            const convertedData = convertToOldFormat(newData);
+            const convertedData = await convertToOldFormat(
+              newData,
+              year,
+              week.toString()
+            );
             const data = JSON.stringify(convertedData);
             cache.set(cacheKey, data);
             return data;
@@ -310,9 +314,11 @@ async function fetchFootballScoreboard(
 /**
  * Convert new NCAA GraphQL format to old format for backwards compatibility
  * @param newData - data from new GraphQL endpoint
+ * @param year - year from URL for old endpoint fallback
+ * @param week - week from URL for old endpoint fallback
  * @returns data in old format
  */
-function convertToOldFormat(newData: any) {
+async function convertToOldFormat(newData: any, year: string, week: string) {
   // Helper function to normalize game state to compatible values
   const normalizeGameState = (gameState: string): string => {
     switch (gameState) {
@@ -327,9 +333,32 @@ function convertToOldFormat(newData: any) {
     }
   };
 
+  // Try to fetch old format data to get missing fields
+  let oldFormatData = null;
+  try {
+    // Format week with leading zero for old endpoint compatibility
+    const formattedWeek = week.toString().padStart(2, "0");
+    const oldUrl = `https://data.ncaa.com/casablanca/scoreboard/football/fbs/${year}/${formattedWeek}/scoreboard.json`;
+    console.log(`Fetching old format data from: ${oldUrl}`);
+    const oldResponse = await fetch(oldUrl);
+    if (oldResponse.ok) {
+      oldFormatData = await oldResponse.json();
+      console.log(
+        `Successfully fetched old format data with ${
+          oldFormatData.games?.length || 0
+        } games`
+      );
+    } else {
+      console.log(`Old endpoint returned status: ${oldResponse.status}`);
+    }
+  } catch (err) {
+    // If old endpoint fails, continue with new data only
+    console.log("Could not fetch old format data:", err);
+  }
+
   const contests = newData?.data?.contests || [];
-  const games = contests
-    .map((contest: any) => {
+  const games = await Promise.all(
+    contests.map(async (contest: any) => {
       const teams = contest.teams || [];
       const homeTeam = teams.find((team: any) => team.isHome);
       const awayTeam = teams.find((team: any) => !team.isHome);
@@ -338,35 +367,89 @@ function convertToOldFormat(newData: any) {
         return null;
       }
 
+      // Try to find matching game in old format data
+      const findMatchingGame = (team1Name: string, team2Name: string) => {
+        if (!oldFormatData?.games) return null;
+
+        // Look for game with matching team names
+        return oldFormatData.games.find((game: any) => {
+          const homeShort = game.game?.home?.names?.short?.toLowerCase();
+          const awayShort = game.game?.away?.names?.short?.toLowerCase();
+          const team1Lower = team1Name.toLowerCase();
+          const team2Lower = team2Name.toLowerCase();
+
+          return (
+            (homeShort === team1Lower && awayShort === team2Lower) ||
+            (homeShort === team2Lower && awayShort === team1Lower)
+          );
+        });
+      };
+
+      const matchingOldGame = findMatchingGame(
+        homeTeam.nameShort,
+        awayTeam.nameShort
+      );
+
       // Helper function to format team data
-      const formatTeam = (team: any, isWinner: boolean) => ({
-        score: team.score?.toString() || "",
-        names: {
-          char6: team.name6Char || "",
-          short: team.nameShort || "",
-          seo: team.seoname || "",
-          full: "", // New format doesn't have full name, we'll leave empty
-        },
-        winner: isWinner,
-        seed: team.seed?.toString() || "",
-        description: "", // New format doesn't have description
-        rank: team.teamRank?.toString() || "",
-        conferences: [
-          {
-            conferenceName: "", // New format doesn't have conference name
-            conferenceSeo: team.conferenceSeo || "",
+      const formatTeam = (team: any, isWinner: boolean, isHome: boolean) => {
+        // Try to get data from old format if available
+        let conferenceName = "";
+        let fullName = "";
+        let description = "";
+
+        if (matchingOldGame?.game) {
+          const oldTeamData = isHome
+            ? matchingOldGame.game.home
+            : matchingOldGame.game.away;
+          conferenceName = oldTeamData?.conferences?.[0]?.conferenceName || "";
+          fullName = oldTeamData?.names?.full || "";
+          description = oldTeamData?.description || "";
+        }
+
+        return {
+          score: team.score?.toString() || "",
+          names: {
+            char6: team.name6Char || "",
+            short: team.nameShort || "",
+            seo: team.seoname || "",
+            full: fullName, // Use old format data if available
           },
-        ],
-      });
+          winner: isWinner,
+          seed: team.seed?.toString() || "",
+          description: description, // Use old format data if available
+          rank: team.teamRank?.toString() || "",
+          conferences: [
+            {
+              conferenceName: conferenceName, // Use old format data if available
+              conferenceSeo: team.conferenceSeo || "",
+            },
+          ],
+        };
+      };
 
       // Determine winner
       const isHomeWinner = homeTeam.isWinner;
       const isAwayWinner = awayTeam.isWinner;
 
+      // Format start time to match old format
+      let startTime = contest.startTime || "";
+      if (startTime && contest.startDate) {
+        // Convert to old format like "12:00PM ET"
+        const date = new Date(contest.startDate + " " + startTime);
+        if (!isNaN(date.getTime())) {
+          startTime =
+            date.toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            }) + " ET";
+        }
+      }
+
       return {
         game: {
           gameID: contest.contestId?.toString() || "",
-          away: formatTeam(awayTeam, isAwayWinner),
+          away: formatTeam(awayTeam, isAwayWinner, false),
           finalMessage: contest.finalMessage || "",
           bracketRound: "",
           title: contest.teams
@@ -374,10 +457,11 @@ function convertToOldFormat(newData: any) {
             : "",
           contestName: "",
           url: contest.url || "",
-          network: contest.broadcasterName || "",
-          home: formatTeam(homeTeam, isHomeWinner),
+          network:
+            matchingOldGame?.game?.network || contest.broadcasterName || "",
+          home: formatTeam(homeTeam, isHomeWinner, true),
           liveVideoEnabled: (contest.liveVideos || []).length > 0,
-          startTime: contest.startTime || "",
+          startTime: startTime,
           startTimeEpoch: contest.startTimeEpoch?.toString() || "",
           bracketId: "",
           gameState: normalizeGameState(contest.gameState || ""),
@@ -389,17 +473,19 @@ function convertToOldFormat(newData: any) {
         },
       };
     })
-    .filter(Boolean);
+  );
+
+  const filteredGames = games.filter(Boolean);
 
   // Generate MD5 sum of the games data for backwards compatibility
-  const gamesString = JSON.stringify(games);
+  const gamesString = JSON.stringify(filteredGames);
   const md5Sum = createHash("md5").update(gamesString).digest("hex");
 
   return {
     inputMD5Sum: md5Sum,
     instanceId: instance_id,
     updated_at: new Date().toISOString().replace("T", " ").substring(0, 19),
-    games,
+    games: filteredGames,
   };
 }
 
