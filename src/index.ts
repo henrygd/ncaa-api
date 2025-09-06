@@ -3,6 +3,7 @@ import { parseHTML } from "linkedom";
 import ExpiryMap from "expiry-map";
 import { getSemaphore } from "@henrygd/semaphore";
 import { createHash } from "crypto";
+import { DivisionKey, getScheduleBySportAndDivision } from "./codes";
 
 const instance_id = createHash("md5").digest("hex");
 
@@ -10,7 +11,7 @@ const instance_id = createHash("md5").digest("hex");
 const cache_30m = new ExpiryMap(30 * 60 * 1000);
 
 // set scores cache expiry to 1 min
-const cache_1m = new ExpiryMap(1 * 60 * 1000);
+const cache_45s = new ExpiryMap(1 * 45 * 1000);
 
 // valid routes for the app with their respective caches
 const validRoutes = new Map([
@@ -20,8 +21,8 @@ const validRoutes = new Map([
   ["history", cache_30m],
   ["schedule", cache_30m],
   ["schools-index", cache_30m],
-  ["game", cache_1m],
-  ["scoreboard", cache_1m],
+  ["game", cache_45s],
+  ["scoreboard", cache_45s],
 ]);
 
 /** log message to console with timestamp */
@@ -58,14 +59,14 @@ export const app = new Elysia()
     }
     return {
       basePath,
-      cache: validRoutes.get(basePath) ?? cache_1m,
+      cache: validRoutes.get(basePath) ?? cache_45s,
       cacheKey: path + (page ?? ""),
     };
   })
   .onBeforeHandle(({ set, cache, cacheKey }) => {
     set.headers["Content-Type"] = "application/json";
     set.headers["Cache-Control"] = `public, max-age=${
-      cache === cache_1m ? 60 : 1800
+      cache === cache_45s ? 60 : 1800
     }`;
     if (cache.has(cacheKey)) {
       return cache.get(cacheKey);
@@ -159,60 +160,10 @@ export const app = new Elysia()
         // get division from url
         const division = params["*"].split("/")[0];
 
-        // Parse URL path to extract year and week parameters for new football endpoint (TEMPORARY)
+        // Parse URL path to extract year and week parameters
         const pathParts = params["*"].split("/");
         const year = pathParts[1]; // e.g., "2025"
-
-        // Check if we should use new endpoint for D1 football in 2025
-        if (shouldUseNewEndpoint(params.sport, division, year)) {
-          const weekParam = pathParts[2]; // e.g., "1" or "week"
-          const weekValue = pathParts[3]; // e.g., "1" if weekParam is "week"
-          try {
-            // Parse week parameter - support both direct week numbers and /week/X format
-            let week: number | undefined = undefined;
-            if (weekParam && !isNaN(parseInt(weekParam))) {
-              // Direct week number: /2025/1
-              week = parseInt(weekParam);
-            } else if (
-              weekParam === "week" &&
-              weekValue &&
-              !isNaN(parseInt(weekValue))
-            ) {
-              // Week format: /2025/week/1
-              week = parseInt(weekValue);
-            } else {
-              // Default to current week or week 1 if no week specified
-              week = 1;
-            }
-
-            log(
-              `Fetching football scoreboard from new endpoint for ${year}, week ${week}`
-            );
-
-            const contestDate = undefined;
-
-            const newData = await fetchFootballScoreboard(
-              "MFB",
-              11,
-              parseInt(year),
-              week,
-              contestDate
-            );
-            const convertedData = await convertToOldFormat(
-              newData,
-              year,
-              week.toString()
-            );
-            const data = JSON.stringify(convertedData);
-            cache.set(cacheKey, data);
-            return data;
-          } catch (err) {
-            log(
-              `Failed to fetch from new endpoint, falling back to old endpoint: ${err}`
-            );
-            // Fall through to old endpoint logic
-          }
-        }
+        const weekFromUrl = pathParts[2]; // e.g., "01" (week number)
 
         // find date in url
         const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/;
@@ -229,6 +180,81 @@ export const app = new Elysia()
           urlDate = await getTodayUrl(params.sport, division);
         }
 
+        // Check if we should use new endpoint for D1 football in 2025
+        // Use the year from URL or today.json
+        const effectiveYear =
+          year || urlDate?.split("/")[0] || new Date().getFullYear().toString();
+        if (
+          params.sport === "football" &&
+          division === "fbs" &&
+          effectiveYear === "2025"
+        ) {
+          try {
+            // Parse week parameter from URL or today.json
+            let week: number | undefined = undefined;
+
+            if (weekFromUrl && !isNaN(parseInt(weekFromUrl))) {
+              // Week provided in URL: /2025/01
+              week = parseInt(weekFromUrl);
+            } else {
+              // No week in URL, extract from today.json response
+              // urlDate is in format "2025/01" where "01" is the week number
+              const dateParts = urlDate?.split("/") || [];
+              if (dateParts.length >= 2) {
+                const weekPart = dateParts[1];
+                week = parseInt(weekPart);
+                if (isNaN(week)) {
+                  week = 1; // Default fallback
+                }
+              } else {
+                week = 1; // Default fallback
+              }
+            }
+
+            // Check week-based cache first for shared caching
+            const weekCacheKey = `football_fbs_${effectiveYear}_week_${week
+              .toString()
+              .padStart(2, "0")}`;
+            if (cache.has(weekCacheKey)) {
+              set.headers["x-score-cache"] = "hit";
+              return cache.get(weekCacheKey);
+            }
+
+            log(
+              `Fetching football scoreboard from new endpoint for ${effectiveYear}, week ${week} (from ${urlDate})`
+            );
+
+            const contestDate = undefined;
+
+            const newData = await fetchFootballScoreboard(
+              "MFB",
+              11,
+              parseInt(effectiveYear),
+              week,
+              contestDate
+            );
+            const convertedData = await convertToOldFormat(
+              newData,
+              effectiveYear,
+              week.toString()
+            );
+            const data = JSON.stringify(convertedData);
+
+            // Use week-based cache key for shared caching across different URL formats
+            cache.set(weekCacheKey, data);
+
+            // Also cache under the original cache key for consistency
+            cache.set(cacheKey, data);
+            return data;
+          } catch (err) {
+            log(
+              `Failed to fetch from new endpoint, falling back to old endpoint: ${err}`
+            );
+            // Fall through to old endpoint logic
+          }
+        }
+
+        // Use old endpoint logic
         const url = `https://data.ncaa.com/casablanca/scoreboard/${params.sport}/${division}/${urlDate}/scoreboard.json`;
 
         const semUrl = getSemaphore(url);
@@ -339,15 +365,9 @@ async function convertToOldFormat(newData: any, year: string, week: string) {
     // Format week with leading zero for old endpoint compatibility
     const formattedWeek = week.toString().padStart(2, "0");
     const oldUrl = `https://data.ncaa.com/casablanca/scoreboard/football/fbs/${year}/${formattedWeek}/scoreboard.json`;
-    console.log(`Fetching old format data from: ${oldUrl}`);
     const oldResponse = await fetch(oldUrl);
     if (oldResponse.ok) {
       oldFormatData = await oldResponse.json();
-      console.log(
-        `Successfully fetched old format data with ${
-          oldFormatData.games?.length || 0
-        } games`
-      );
     } else {
       console.log(`Old endpoint returned status: ${oldResponse.status}`);
     }
@@ -511,7 +531,21 @@ async function getTodayUrl(sport: string, division: string): Promise<string> {
   if (cache_30m.has(cacheKey)) {
     return cache_30m.get(cacheKey);
   }
+
   log(`Fetching today.json for ${sport} ${division}`);
+  try {
+    const today = await getScheduleBySportAndDivision(
+      sport,
+      division as DivisionKey
+    );
+    cache_30m.set(cacheKey, today);
+    return today;
+  } catch (err) {
+    log(
+      `Failed to fetch schedule from new endpoint, falling back to old endpoint: ${err}`
+    );
+    // Fall through to old endpoint logic
+  }
   const req = await fetch(
     `https://data.ncaa.com/casablanca/schedule/${sport}/${division}/today.json`
   );

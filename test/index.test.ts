@@ -1,3 +1,4 @@
+import { getScheduleBySportAndDivision } from "../src/codes";
 import { app } from "../src/index";
 import { describe, expect, it } from "bun:test";
 
@@ -143,6 +144,11 @@ describe("General", () => {
     }
     expect(nonCached).toBe(1);
     expect(cached).toBe(headers.length - 1);
+  });
+  it("new schedule function returns good data", async () => {
+    const today = await getScheduleBySportAndDivision("football", "fbs");
+    expect(today).toBeString();
+    expect(today).toContain(new Date().getFullYear().toString());
   });
 });
 
