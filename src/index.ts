@@ -65,9 +65,8 @@ export const app = new Elysia()
   })
   .onBeforeHandle(({ set, cache, cacheKey }) => {
     set.headers["Content-Type"] = "application/json";
-    set.headers["Cache-Control"] = `public, max-age=${
-      cache === cache_45s ? 60 : 1800
-    }`;
+    set.headers["Cache-Control"] =
+      `public, max-age=${cache === cache_45s ? 60 : 1800}`;
     if (cache.has(cacheKey)) {
       return cache.get(cacheKey);
     }
@@ -89,34 +88,125 @@ export const app = new Elysia()
     }
   })
   // game route to retrieve game details
+  .get("/game/:id", async ({ cache, cacheKey, error, params: { id } }) => {
+    if (!id) {
+      return error(400, "Game id is required");
+    }
+    // handle base game route
+    const req = await fetch(
+      `https://sdataprod.ncaa.com/?meta=GetGamecenterGameById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2293a02c7193c89d85bcdda8c1784925d9b64657f73ef584382e2297af555acd4b%22}}&variables={%22id%22:%22${id}%22,%22week%22:null,%22staticTestEnv%22:null}`
+    );
+    if (!req.ok) {
+      return error(404, "Resource not found");
+    }
+    const data = JSON.stringify((await req.json())?.data);
+    cache.set(cacheKey, data);
+    return data;
+  })
   .get(
-    "/game/:id?/:page?",
-    async ({ cache, cacheKey, error, params: { id, page } }) => {
-      if (!id) {
-        return error(400, "Game id is required");
-      }
-      // handle base game route
-      if (!page) {
+    "/game/:id/boxscore",
+    async ({ cache, cacheKey, error, params: { id } }) => {
+      // new football boxscore graphql endpoint
+      if (id.startsWith("645")) {
         const req = await fetch(
-          `https://sdataprod.ncaa.com/?meta=GetGamecenterGameById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2293a02c7193c89d85bcdda8c1784925d9b64657f73ef584382e2297af555acd4b%22}}&variables={%22id%22:%22${id}%22,%22week%22:null,%22staticTestEnv%22:null}`
+          `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e"}}&variables={"contestId":"${id}","staticTestEnv":null}`
         );
-        if (!req.ok) {
-          return error(404, "Resource not found");
+        if (req.ok) {
+          const json = await req.json();
+          if (json?.data?.boxscore) {
+            const data = JSON.stringify(json.data.boxscore);
+            cache.set(cacheKey, data);
+            return data;
+          }
         }
-        const data = JSON.stringify((await req.json())?.data);
-        cache.set(cacheKey, data);
-        return data;
       }
       // handle other game routes
-      if (page === "play-by-play") {
-        page = "pbp";
-      } else if (page === "scoring-summary") {
-        page = "scoringSummary";
-      } else if (page === "team-stats") {
-        page = "teamStats";
+      const req = await fetch(
+        `https://data.ncaa.com/casablanca/game/${id}/boxscore.json`
+      );
+      if (!req.ok) {
+        return error(404, "Resource not found");
+      }
+      const data = JSON.stringify(await req.json());
+      cache.set(cacheKey, data);
+      return data;
+    }
+  )
+  .get(
+    "/game/:id/play-by-play",
+    async ({ cache, cacheKey, error, params: { id } }) => {
+      // new football play by play graphql endpoint
+      if (id.startsWith("645")) {
+        const req = await fetch(
+          `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+        );
+        if (req.ok) {
+          const json = await req.json();
+          if (json?.data?.playbyplay) {
+            const data = JSON.stringify(json.data.playbyplay);
+            cache.set(cacheKey, data);
+            return data;
+          }
+        }
       }
       const req = await fetch(
-        `https://data.ncaa.com/casablanca/game/${id}/${page}.json`
+        `https://data.ncaa.com/casablanca/game/${id}/pbp.json`
+      );
+      if (!req.ok) {
+        return error(404, "Resource not found");
+      }
+      const data = JSON.stringify(await req.json());
+      cache.set(cacheKey, data);
+      return data;
+    }
+  )
+  .get(
+    "/game/:id/scoring-summary",
+    async ({ cache, cacheKey, error, params: { id } }) => {
+      // new football scoring summary graphql endpoint
+      if (id.startsWith("645")) {
+        const req = await fetch(
+          `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+        );
+        if (req.ok) {
+          const json = await req.json();
+          if (json?.data?.scoringSummary) {
+            const data = JSON.stringify(json.data.scoringSummary);
+            cache.set(cacheKey, data);
+            return data;
+          }
+        }
+      }
+      const req = await fetch(
+        `https://data.ncaa.com/casablanca/game/${id}/scoringSummary.json`
+      );
+      if (!req.ok) {
+        return error(404, "Resource not found");
+      }
+      const data = JSON.stringify(await req.json());
+      cache.set(cacheKey, data);
+      return data;
+    }
+  )
+  .get(
+    "/game/:id/team-stats",
+    async ({ cache, cacheKey, error, params: { id } }) => {
+      // new football team stats graphql endpoint
+      if (id.startsWith("645")) {
+        const req = await fetch(
+          `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+        );
+        if (req.ok) {
+          const json = await req.json();
+          if (json?.data?.boxscore) {
+            const data = JSON.stringify(json.data.boxscore);
+            cache.set(cacheKey, data);
+            return data;
+          }
+        }
+      }
+      const req = await fetch(
+        `https://data.ncaa.com/casablanca/game/${id}/teamStats.json`
       );
       if (!req.ok) {
         return error(404, "Resource not found");
