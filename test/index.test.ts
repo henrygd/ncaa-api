@@ -1,6 +1,6 @@
+import { describe, expect, it } from "bun:test";
 import { getScheduleBySportAndDivision } from "../src/codes";
 import { app } from "../src/index";
-import { describe, expect, it } from "bun:test";
 
 describe("General", () => {
   it("home route redirects to github", async () => {
@@ -115,6 +115,32 @@ describe("General", () => {
     const finish = performance.now() - start;
     expect(finish).toBeLessThan(10);
   });
+  it("new scoreboard football route returns good data", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/scoreboard/football/fbs/2025/01")
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+    const data = await response.json();
+    expect(data).toContainKey("games");
+    expect(data.games).toBeArray();
+    const gameOne = data.games[0];
+    expect(gameOne?.game?.gameID).toBe("6458983");
+    expect(gameOne?.game?.away?.score).toBe("24");
+  });
+  it("new scoreboard soccer route returns good data", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/scoreboard/soccer-men/d1/2025/09/29")
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+    const data = await response.json();
+    expect(data).toContainKey("games");
+    expect(data.games).toBeArray();
+    const gameOne = data.games[0];
+    expect(gameOne?.game?.gameID).toBe("6463999");
+    expect(gameOne?.game?.away?.score).toBe("1");
+  });
   it("semaphore queues simultaneous requests for same scoreboard resource", async () => {
     const requests = [];
     // will fail when baseball season starts again bc date will be different
@@ -142,8 +168,8 @@ describe("General", () => {
         nonCached++;
       }
     }
-    expect(nonCached).toBe(1);
     expect(cached).toBe(headers.length - 1);
+    expect(nonCached).toBe(1);
   });
   it("new schedule function returns good data", async () => {
     const today = await getScheduleBySportAndDivision("football", "fbs");

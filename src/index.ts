@@ -1,9 +1,15 @@
-import { Elysia, NotFoundError } from "elysia";
-import { parseHTML } from "linkedom";
-import ExpiryMap from "expiry-map";
 import { getSemaphore } from "@henrygd/semaphore";
 import { createHash } from "crypto";
-import { DivisionKey, getScheduleBySportAndDivision } from "./codes";
+import { Elysia, NotFoundError } from "elysia";
+import ExpiryMap from "expiry-map";
+import { parseHTML } from "linkedom";
+import {
+  type DivisionKey,
+  getDivisionCode,
+  getScheduleBySportAndDivision,
+  newCodesBySport,
+  supportedSeasons,
+} from "./codes";
 
 const instance_id = createHash("md5").digest("hex");
 
@@ -83,7 +89,7 @@ export const app = new Elysia()
       const data = JSON.stringify(json);
       cache.set(cacheKey, data);
       return data;
-    } catch (err) {
+    } catch (_) {
       return error(500, "Error fetching data");
     }
   })
@@ -107,7 +113,7 @@ export const app = new Elysia()
     "/game/:id/boxscore",
     async ({ cache, cacheKey, error, params: { id } }) => {
       // new football boxscore graphql endpoint
-      if (id.startsWith("645")) {
+      if (supportedSeasons.has(id.slice(0, 3))) {
         const req = await fetch(
           `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e"}}&variables={"contestId":"${id}","staticTestEnv":null}`
         );
@@ -136,7 +142,7 @@ export const app = new Elysia()
     "/game/:id/play-by-play",
     async ({ cache, cacheKey, error, params: { id } }) => {
       // new football play by play graphql endpoint
-      if (id.startsWith("645")) {
+      if (supportedSeasons.has(id.slice(0, 3))) {
         const req = await fetch(
           `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2"}}&variables={"contestId":"${id}","staticTestEnv":null}`
         );
@@ -164,7 +170,7 @@ export const app = new Elysia()
     "/game/:id/scoring-summary",
     async ({ cache, cacheKey, error, params: { id } }) => {
       // new football scoring summary graphql endpoint
-      if (id.startsWith("645")) {
+      if (supportedSeasons.has(id.slice(0, 3))) {
         const req = await fetch(
           `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198"}}&variables={"contestId":"${id}","staticTestEnv":null}`
         );
@@ -192,7 +198,7 @@ export const app = new Elysia()
     "/game/:id/team-stats",
     async ({ cache, cacheKey, error, params: { id } }) => {
       // new football team stats graphql endpoint
-      if (id.startsWith("645")) {
+      if (supportedSeasons.has(id.slice(0, 3))) {
         const req = await fetch(
           `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd"}}&variables={"contestId":"${id}","staticTestEnv":null}`
         );
@@ -247,13 +253,8 @@ export const app = new Elysia()
           return cache.get(cacheKey);
         }
 
-        // get division from url
-        const division = params["*"].split("/")[0];
-
         // Parse URL path to extract year and week parameters
-        const pathParts = params["*"].split("/");
-        const year = pathParts[1]; // e.g., "2025"
-        const weekFromUrl = pathParts[2]; // e.g., "01" (week number)
+        const [division, year] = params["*"].split("/");
 
         // find date in url
         const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/;
@@ -272,61 +273,39 @@ export const app = new Elysia()
 
         // Check if we should use new endpoint for D1 football in 2025
         // Use the year from URL or today.json
-        const effectiveYear =
-          year || urlDate?.split("/")[0] || new Date().getFullYear().toString();
-        if (
-          params.sport === "football" &&
-          division === "fbs" &&
-          effectiveYear === "2025"
-        ) {
+        const effectiveYear = year || new Date().getFullYear().toString();
+        if (params.sport in newCodesBySport && effectiveYear >= "2025") {
           try {
-            // Parse week parameter from URL or today.json
-            let week: number | undefined = undefined;
-
-            if (weekFromUrl && !isNaN(parseInt(weekFromUrl))) {
-              // Week provided in URL: /2025/01
-              week = parseInt(weekFromUrl);
-            } else {
-              // No week in URL, extract from today.json response
-              // urlDate is in format "2025/01" where "01" is the week number
-              const dateParts = urlDate?.split("/") || [];
-              if (dateParts.length >= 2) {
-                const weekPart = dateParts[1];
-                week = parseInt(weekPart);
-                if (isNaN(week)) {
-                  week = 1; // Default fallback
-                }
-              } else {
-                week = 1; // Default fallback
-              }
-            }
-
+            const sportCode =
+              newCodesBySport[params.sport as keyof typeof newCodesBySport]
+                .code;
             // Check week-based cache first for shared caching
-            const weekCacheKey = `football_fbs_${effectiveYear}_week_${week
-              .toString()
-              .padStart(2, "0")}`;
+            const weekCacheKey = `${sportCode}_${division}_${urlDate}`;
             if (cache.has(weekCacheKey)) {
               set.headers["x-score-cache"] = "hit";
               return cache.get(weekCacheKey);
             }
 
-            log(
-              `Fetching football scoreboard from new endpoint for ${effectiveYear}, week ${week} (from ${urlDate})`
-            );
+            const divisionCode = getDivisionCode(params.sport, division);
 
-            const contestDate = undefined;
+            const newParams: NewScoreboardParams = {
+              sportCode,
+              division: divisionCode,
+              seasonYear: parseInt(effectiveYear, 10),
+            };
 
-            const newData = await fetchFootballScoreboard(
-              "MFB",
-              11,
-              parseInt(effectiveYear),
-              week,
-              contestDate
-            );
+            if (sportCode === "MFB") {
+              newParams.week = parseInt(urlDate.split("/")[1] ?? "1", 10);
+            } else {
+              newParams.contestDate = urlDate;
+            }
+
+            const newData = await fetchGqlScoreboard(newParams);
             const convertedData = await convertToOldFormat(
               newData,
-              effectiveYear,
-              week.toString()
+              params.sport,
+              division,
+              urlDate
             );
             const data = JSON.stringify(convertedData);
 
@@ -356,7 +335,6 @@ export const app = new Elysia()
             return cache.get(url);
           }
           // fetch data
-          log(`Fetching ${url}`);
           const res = await fetch(url);
           if (!res.ok) {
             return error(404, "Resource not found");
@@ -391,32 +369,19 @@ log(`Server is running at ${app.server?.url}`);
 /////////////////////////////// FUNCTIONS ////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-/**
- * Fetch football scoreboard data from new NCAA GraphQL endpoint
- * @param sport - sport code (e.g., 'MFB' for football)
- * @param division - division number
- * @param seasonYear - season year
- * @param week - week number (optional)
- * @param contestDate - specific date (optional)
- */
-async function fetchFootballScoreboard(
-  sport: string,
-  division: number,
-  seasonYear: number,
-  week?: number,
-  contestDate?: string
-) {
-  const variables = {
-    sportCode: sport,
-    division,
-    seasonYear,
-    contestDate,
-    week,
-  };
+interface NewScoreboardParams {
+  sportCode: string;
+  division: string;
+  seasonYear: number;
+  week?: number;
+  contestDate?: string;
+}
 
-  const url = `https://sdataprod.ncaa.com/?meta=GetContests_web&extensions={"persistedQuery":{"version":1,"sha256Hash":"7287cda610a9326931931080cb3a604828febe6fe3c9016a7e4a36db99efdb7c"}}&variables=${encodeURIComponent(
-    JSON.stringify(variables)
-  )}`;
+/**
+ * Fetch scoreboard data from new NCAA GraphQL endpoint
+ */
+async function fetchGqlScoreboard(params: NewScoreboardParams) {
+  const url = `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"7287cda610a9326931931080cb3a604828febe6fe3c9016a7e4a36db99efdb7c"}}&variables=${JSON.stringify(params)}`;
 
   const req = await fetch(url);
   if (!req.ok) {
@@ -434,7 +399,12 @@ async function fetchFootballScoreboard(
  * @param week - week from URL for old endpoint fallback
  * @returns data in old format
  */
-async function convertToOldFormat(newData: any, year: string, week: string) {
+async function convertToOldFormat(
+  newData: any,
+  sport: string,
+  division: string,
+  date: string
+) {
   // Helper function to normalize game state to compatible values
   const normalizeGameState = (gameState: string): string => {
     switch (gameState) {
@@ -453,8 +423,7 @@ async function convertToOldFormat(newData: any, year: string, week: string) {
   let oldFormatData = null;
   try {
     // Format week with leading zero for old endpoint compatibility
-    const formattedWeek = week.toString().padStart(2, "0");
-    const oldUrl = `https://data.ncaa.com/casablanca/scoreboard/football/fbs/${year}/${formattedWeek}/scoreboard.json`;
+    const oldUrl = `https://data.ncaa.com/casablanca/scoreboard/${sport}/${division}/${date}/scoreboard.json`;
     const oldResponse = await fetch(oldUrl);
     if (oldResponse.ok) {
       oldFormatData = await oldResponse.json();
@@ -545,14 +514,13 @@ async function convertToOldFormat(newData: any, year: string, week: string) {
       let startTime = contest.startTime || "";
       if (startTime && contest.startDate) {
         // Convert to old format like "12:00PM ET"
-        const date = new Date(contest.startDate + " " + startTime);
-        if (!isNaN(date.getTime())) {
-          startTime =
-            date.toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            }) + " ET";
+        const date = new Date(`${contest.startDate} ${startTime}`);
+        if (!Number.isNaN(date.getTime())) {
+          startTime = `${date.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })} ET`;
         }
       }
 
@@ -606,9 +574,9 @@ async function convertToOldFormat(newData: any, year: string, week: string) {
  * @param year - year from URL (optional)
  * @returns boolean indicating if new endpoint should be used
  */
-function shouldUseNewEndpoint(sport: string, division: string, year?: string) {
-  return sport === "football" && division === "fbs" && year === "2025";
-}
+// function shouldUseNewEndpoint(sport: string, division: string, year?: string) {
+//   return sport === "football" && division === "fbs" && year === "2025";
+// }
 
 /**
  * Fetch proper url date for today from ncaa.com
@@ -692,7 +660,7 @@ async function getData(opts: { path: string; page?: string }) {
       route === "standings" ? "ALL CONFERENCES" : document.title.split(" |")[0];
   }
 
-  let updated =
+  const updated =
     document
       .querySelectorAll(
         ".stats-header__lower__desc, .rankings-last-updated, .standings-last-updated"

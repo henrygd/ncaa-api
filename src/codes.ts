@@ -1,4 +1,4 @@
-const newCodesBySport = {
+export const newCodesBySport = {
   football: {
     code: "MFB",
     divisions: {
@@ -21,33 +21,69 @@ const newCodesBySport = {
       d3: 3,
     },
   },
-  // softball: {
-  //   code: "WSB",
-  //   divisions: {
-  //     d1: 1,
-  //     d2: 2,
-  //     d3: 3,
-  //   },
-  // },
-  // "soccer-women": {
-  //   code: "WSK",
-  //   divisions: {
-  //     d1: 1,
-  //     d2: 2,
-  //     d3: 3,
-  //   },
-  // },
-  // "soccer-men": {
-  //   code: "MSK",
-  //   divisions: {
-  //     d1: 1,
-  //     d2: 2,
-  //     d3: 3,
-  //   },
-  // },
+  baseball: {
+    code: "MBA",
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  fieldhockey: {
+    code: "WFH",
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  "soccer-men": {
+    code: "MSO",
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  "soccer-women": {
+    code: "WSO",
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  "waterpolo-men": {
+    code: "MWP",
+    divisions: {
+      d1: 1,
+    },
+  },
+  "volleyball-women": {
+    code: "WVB",
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+};
+
+export const getDivisionCode = (sport: string, division: string) => {
+  const sportData = newCodesBySport[sport as keyof typeof newCodesBySport];
+  if (!sportData) {
+    throw errNotSupported(sport, division);
+  }
+  return (
+    sportData.divisions[division as keyof typeof sportData.divisions] ??
+    division
+  );
 };
 
 const supportedSports = Object.keys(newCodesBySport);
+
+// TODO: check if we can just use >= 645
+export const supportedSeasons = new Set(["645", "646", "647", "648", "649"]);
 
 // Define division type as union of all possible division keys
 export type DivisionKey = "fbs" | "fcs" | "d1" | "d2" | "d3";
@@ -85,6 +121,11 @@ export async function getScheduleBySportAndDivision(
   const today = json.data?.schedules?.today?.date;
   if (!today) {
     throw new Error("Failed to fetch schedule");
+  }
+  // convert MM/DD/YYYY to YYYY/MM/DD (exclude football which is WEEK/YYYY)
+  const todaySplit = today.split("/");
+  if (todaySplit.length === 3) {
+    return `${todaySplit[2]}/${todaySplit[0]}/${todaySplit[1]}`;
   }
   return today;
 }
