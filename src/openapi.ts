@@ -36,7 +36,7 @@ export const openapiSpec = openapi({
       version: "3.0.0-beta.1",
       license: {
         name: "MIT",
-        url: "https://github.com/henrygd/ncaa-api/blob/main/LICENSE",
+        url: "https://github.com/henrygd/ncaa-api/blob/master/LICENSE",
       },
       contact: {
         name: "henrygd",
