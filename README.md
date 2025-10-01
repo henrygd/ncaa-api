@@ -4,13 +4,13 @@ Free API to return consumable data from ncaa.com.
 
 Works with scores, stats, rankings, standings, schedules, history, and game details (box score, play by play, scoring summary, team stats).
 
+Try it out here: <https://ncaa-api.henrygd.me/openapi>
+
 ## Usage
 
 Make a GET request using the same path as the URL on ncaa.com. You'll get a JSON response with the data.
 
-You can test using the demo API below. [Host your own](#deployment) if you need it to be reliable long term.
-
-https://ncaa-api.henrygd.me/rankings/football/fbs/associated-press
+You can test using the [demo API](https://ncaa-api.henrygd.me/openapi). [Host your own](#deployment) if you need it to be reliable long term.
 
 > Note: The public API is limited to 5 requests per second per IP.
 
@@ -28,7 +28,7 @@ The following URL parameters are supported:
 
 Fetches live scores for a given sport, division, and date.
 
-Website: https://www.ncaa.com/scoreboard/football/fbs/2023/13/all-conf
+Website: <https://www.ncaa.com/scoreboard/football/fbs/2023/13/all-conf>
 
 `GET /scoreboard/football/fbs/2023/13/all-conf`
 
@@ -113,7 +113,7 @@ Website: https://www.ncaa.com/scoreboard/football/fbs/2023/13/all-conf
 
 ### Stats
 
-Website: https://www.ncaa.com/stats/football/fbs/current/team/28
+Website: <https://www.ncaa.com/stats/football/fbs/current/team/28>
 
 `GET /stats/football/fbs/current/team/28`
 
@@ -156,7 +156,7 @@ Website: https://www.ncaa.com/stats/football/fbs/current/team/28
 }
 ```
 
-Website: https://www.ncaa.com/stats/football/fbs/current/individual/750
+Website: <https://www.ncaa.com/stats/football/fbs/current/individual/750>
 
 `GET /stats/football/fbs/current/individual/750`
 
@@ -193,7 +193,7 @@ Website: https://www.ncaa.com/stats/football/fbs/current/individual/750
 
 ### Rankings
 
-Website: https://www.ncaa.com/rankings/football/fbs/associated-press
+Website: <https://www.ncaa.com/rankings/football/fbs/associated-press>
 
 `GET /rankings/football/fbs/associated-press`
 
@@ -226,7 +226,7 @@ Website: https://www.ncaa.com/rankings/football/fbs/associated-press
 
 ### Standings
 
-Website: https://www.ncaa.com/standings/basketball-women/d1
+Website: <https://www.ncaa.com/standings/basketball-women/d1>
 
 `GET /standings/basketball-women/d1`
 
@@ -271,7 +271,7 @@ Website: https://www.ncaa.com/standings/basketball-women/d1
 
 ### History
 
-Website: https://www.ncaa.com/history/bowling/nc
+Website: <https://www.ncaa.com/history/bowling/nc>
 
 `GET /history/bowling/nc`
 
@@ -349,7 +349,7 @@ It also requires different dates for different sports. Football uses YYYY, while
 
 Provides details of a single game.
 
-Website: https://www.ncaa.com/game/6305900
+Website: <https://www.ncaa.com/game/6305900>
 
 - `GET /game/6305900` returns general information
 - `GET /game/6305900/boxscore` returns box score
@@ -361,7 +361,7 @@ Website: https://www.ncaa.com/game/6305900
 
 Returns a list of all schools.
 
-Website: https://www.ncaa.com/schools-index
+Website: <https://www.ncaa.com/schools-index>
 
 `GET /schools-index`
 
