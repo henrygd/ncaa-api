@@ -3,11 +3,9 @@ import { getScheduleBySportAndDivision } from "../src/codes";
 import { app } from "../src/index";
 
 describe("General", () => {
-  it("home route redirects to github", async () => {
+  it("home route redirects to openapi", async () => {
     const response = await app.handle(new Request("http://localhost/"));
-    expect(response.headers.get("Location")).toBe(
-      "https://github.com/henrygd/ncaa-api"
-    );
+    expect(response.headers.get("Location")).toBe("/openapi");
   });
   it("invalid route returns 400", async () => {
     const response = await app.handle(new Request("http://localhost/invalid"));

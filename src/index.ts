@@ -1,6 +1,6 @@
 import { getSemaphore } from "@henrygd/semaphore";
 import { createHash } from "crypto";
-import { Elysia, NotFoundError } from "elysia";
+import { Elysia, NotFoundError, t } from "elysia";
 import ExpiryMap from "expiry-map";
 import { parseHTML } from "linkedom";
 import {
@@ -8,8 +8,11 @@ import {
   getDivisionCode,
   getScheduleBySportAndDivision,
   newCodesBySport,
+  supportedDivisions,
   supportedSeasons,
+  supportedSports,
 } from "./codes";
+import { openapiSpec } from "./openapi";
 
 const instance_id = createHash("md5").digest("hex");
 
@@ -29,6 +32,7 @@ const validRoutes = new Map([
   ["schools-index", cache_30m],
   ["game", cache_45s],
   ["scoreboard", cache_45s],
+  ["schedule-alt", cache_30m],
 ]);
 
 /** log message to console with timestamp */
@@ -43,25 +47,29 @@ function log(str: string) {
 //////////////////////////////////////////////////////////////////////////////
 
 export const app = new Elysia()
+  .use(openapiSpec)
+  .onError(({ error, code }) => {
+    if (code === "VALIDATION") return error.detail(error.message);
+  })
   // redirect index to github page
-  .get("/", ({ redirect }) => redirect("https://github.com/henrygd/ncaa-api"))
+  .get("/", ({ redirect }) => redirect("/openapi"), { detail: { hide: true } })
   // validate request / set cache key
-  .resolve(({ request, path, error, query: { page } }) => {
+  .resolve(({ request, path, query: { page }, status }) => {
     // validate custom header value
     if (
       process.env.NCAA_HEADER_KEY &&
       request.headers.get("x-ncaa-key") !== process.env.NCAA_HEADER_KEY
     ) {
-      return error(401);
+      return status(401);
     }
     // check that page param is an int
     if (page && !/^\d+$/.test(page)) {
-      return error(400, "Page parameter must be an integer");
+      return status(400, "Page parameter must be an integer");
     }
     // check that resource is valid
     const basePath = path.split("/")[1];
     if (!validRoutes.has(basePath)) {
-      return error(400, "Invalid resource");
+      return status(400, "Invalid resource");
     }
     return {
       basePath,
@@ -78,173 +86,210 @@ export const app = new Elysia()
     }
   })
   // schools-index route to return list of all schools
-  .get("/schools-index", async ({ cache, cacheKey, error }) => {
-    const req = await fetch("https://www.ncaa.com/json/schools");
-    try {
-      const json = (await req.json()).map((school: Record<string, string>) => ({
-        slug: school.slug,
-        name: school.name?.trim(),
-        long: school.long_name?.trim(),
-      }));
-      const data = JSON.stringify(json);
-      cache.set(cacheKey, data);
-      return data;
-    } catch (_) {
-      return error(500, "Error fetching data");
-    }
-  })
-  // game route to retrieve game details
-  .get("/game/:id", async ({ cache, cacheKey, error, params: { id } }) => {
-    if (!id) {
-      return error(400, "Game id is required");
-    }
-    // handle base game route
-    const req = await fetch(
-      `https://sdataprod.ncaa.com/?meta=GetGamecenterGameById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2293a02c7193c89d85bcdda8c1784925d9b64657f73ef584382e2297af555acd4b%22}}&variables={%22id%22:%22${id}%22,%22week%22:null,%22staticTestEnv%22:null}`
-    );
-    if (!req.ok) {
-      return error(404, "Resource not found");
-    }
-    const data = JSON.stringify((await req.json())?.data);
-    cache.set(cacheKey, data);
-    return data;
-  })
   .get(
-    "/game/:id/boxscore",
-    async ({ cache, cacheKey, error, params: { id } }) => {
-      // new football boxscore graphql endpoint
-      if (supportedSeasons.has(id.slice(0, 3))) {
-        const req = await fetch(
-          `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+    "/schools-index",
+    async ({ cache, cacheKey, status }) => {
+      const req = await fetch("https://www.ncaa.com/json/schools");
+      try {
+        const json = (await req.json()).map(
+          (school: Record<string, string>) => ({
+            slug: school.slug,
+            name: school.name?.trim(),
+            long: school.long_name?.trim(),
+          })
         );
-        if (req.ok) {
-          const json = await req.json();
-          if (json?.data?.boxscore) {
-            const data = JSON.stringify(json.data.boxscore);
-            cache.set(cacheKey, data);
-            return data;
-          }
-        }
+        const data = JSON.stringify(json);
+        cache.set(cacheKey, data);
+        return data;
+      } catch (_) {
+        return status(500, "Error fetching data");
       }
-      // handle other game routes
-      const req = await fetch(
-        `https://data.ncaa.com/casablanca/game/${id}/boxscore.json`
-      );
-      if (!req.ok) {
-        return error(404, "Resource not found");
-      }
-      const data = JSON.stringify(await req.json());
-      cache.set(cacheKey, data);
-      return data;
-    }
+    },
+    { detail: { hide: true } }
   )
-  .get(
-    "/game/:id/play-by-play",
-    async ({ cache, cacheKey, error, params: { id } }) => {
-      // new football play by play graphql endpoint
-      if (supportedSeasons.has(id.slice(0, 3))) {
-        const req = await fetch(
-          `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2"}}&variables={"contestId":"${id}","staticTestEnv":null}`
-        );
-        if (req.ok) {
-          const json = await req.json();
-          if (json?.data?.playbyplay) {
-            const data = JSON.stringify(json.data.playbyplay);
-            cache.set(cacheKey, data);
-            return data;
+  .group("/game", (app) =>
+    app
+      // game route to retrieve game details
+      .get(
+        "/:id",
+        async ({ cache, cacheKey, status, params: { id } }) => {
+          const req = await fetch(
+            `https://sdataprod.ncaa.com/?meta=GetGamecenterGameById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2293a02c7193c89d85bcdda8c1784925d9b64657f73ef584382e2297af555acd4b%22}}&variables={%22id%22:%22${id}%22,%22week%22:null,%22staticTestEnv%22:null}`
+          );
+          if (!req.ok) {
+            return status(404, "Resource not found");
           }
-        }
-      }
-      const req = await fetch(
-        `https://data.ncaa.com/casablanca/game/${id}/pbp.json`
-      );
-      if (!req.ok) {
-        return error(404, "Resource not found");
-      }
-      const data = JSON.stringify(await req.json());
-      cache.set(cacheKey, data);
-      return data;
-    }
-  )
-  .get(
-    "/game/:id/scoring-summary",
-    async ({ cache, cacheKey, error, params: { id } }) => {
-      // new football scoring summary graphql endpoint
-      if (supportedSeasons.has(id.slice(0, 3))) {
-        const req = await fetch(
-          `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198"}}&variables={"contestId":"${id}","staticTestEnv":null}`
-        );
-        if (req.ok) {
-          const json = await req.json();
-          if (json?.data?.scoringSummary) {
-            const data = JSON.stringify(json.data.scoringSummary);
-            cache.set(cacheKey, data);
-            return data;
+          const data = JSON.stringify((await req.json())?.data);
+          cache.set(cacheKey, data);
+          return data;
+        },
+        { detail: { hide: true } }
+      )
+      .get(
+        "/:id/boxscore",
+        async ({ cache, cacheKey, status, params: { id } }) => {
+          // new football boxscore graphql endpoint
+          if (supportedSeasons.has(id.slice(0, 3))) {
+            const req = await fetch(
+              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+            );
+            if (req.ok) {
+              const json = await req.json();
+              if (json?.data?.boxscore) {
+                const data = JSON.stringify(json.data.boxscore);
+                cache.set(cacheKey, data);
+                return data;
+              }
+            }
           }
-        }
-      }
-      const req = await fetch(
-        `https://data.ncaa.com/casablanca/game/${id}/scoringSummary.json`
-      );
-      if (!req.ok) {
-        return error(404, "Resource not found");
-      }
-      const data = JSON.stringify(await req.json());
-      cache.set(cacheKey, data);
-      return data;
-    }
-  )
-  .get(
-    "/game/:id/team-stats",
-    async ({ cache, cacheKey, error, params: { id } }) => {
-      // new football team stats graphql endpoint
-      if (supportedSeasons.has(id.slice(0, 3))) {
-        const req = await fetch(
-          `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd"}}&variables={"contestId":"${id}","staticTestEnv":null}`
-        );
-        if (req.ok) {
-          const json = await req.json();
-          if (json?.data?.boxscore) {
-            const data = JSON.stringify(json.data.boxscore);
-            cache.set(cacheKey, data);
-            return data;
+          // handle other game routes
+          const req = await fetch(
+            `https://data.ncaa.com/casablanca/game/${id}/boxscore.json`
+          );
+          if (!req.ok) {
+            return status(404, "Resource not found");
           }
-        }
-      }
-      const req = await fetch(
-        `https://data.ncaa.com/casablanca/game/${id}/teamStats.json`
-      );
-      if (!req.ok) {
-        return error(404, "Resource not found");
-      }
-      const data = JSON.stringify(await req.json());
-      cache.set(cacheKey, data);
-      return data;
-    }
+          const data = JSON.stringify(await req.json());
+          cache.set(cacheKey, data);
+          return data;
+        },
+        { detail: { hide: true } }
+      )
+      .get(
+        "/:id/play-by-play",
+        async ({ cache, cacheKey, status, params: { id } }) => {
+          // new football play by play graphql endpoint
+          if (supportedSeasons.has(id.slice(0, 3))) {
+            const req = await fetch(
+              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+            );
+            if (req.ok) {
+              const json = await req.json();
+              if (json?.data?.playbyplay) {
+                const data = JSON.stringify(json.data.playbyplay);
+                cache.set(cacheKey, data);
+                return data;
+              }
+            }
+          }
+          const req = await fetch(
+            `https://data.ncaa.com/casablanca/game/${id}/pbp.json`
+          );
+          if (!req.ok) {
+            return status(404, "Resource not found");
+          }
+          const data = JSON.stringify(await req.json());
+          cache.set(cacheKey, data);
+          return data;
+        },
+        { detail: { hide: true } }
+      )
+      .get(
+        "/:id/scoring-summary",
+        async ({ cache, cacheKey, status, params: { id } }) => {
+          // new football scoring summary graphql endpoint
+          if (supportedSeasons.has(id.slice(0, 3))) {
+            const req = await fetch(
+              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+            );
+            if (req.ok) {
+              const json = await req.json();
+              if (json?.data?.scoringSummary) {
+                const data = JSON.stringify(json.data.scoringSummary);
+                cache.set(cacheKey, data);
+                return data;
+              }
+            }
+          }
+          const req = await fetch(
+            `https://data.ncaa.com/casablanca/game/${id}/scoringSummary.json`
+          );
+          if (!req.ok) {
+            return status(404, "Resource not found");
+          }
+          const data = JSON.stringify(await req.json());
+          cache.set(cacheKey, data);
+          return data;
+        },
+        { detail: { hide: true } }
+      )
+      .get(
+        "/:id/team-stats",
+        async ({ cache, cacheKey, status, params: { id } }) => {
+          // new football team stats graphql endpoint
+          if (supportedSeasons.has(id.slice(0, 3))) {
+            const req = await fetch(
+              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+            );
+            if (req.ok) {
+              const json = await req.json();
+              if (json?.data?.boxscore) {
+                const data = JSON.stringify(json.data.boxscore);
+                cache.set(cacheKey, data);
+                return data;
+              }
+            }
+          }
+          const req = await fetch(
+            `https://data.ncaa.com/casablanca/game/${id}/teamStats.json`
+          );
+          if (!req.ok) {
+            return status(404, "Resource not found");
+          }
+          const data = JSON.stringify(await req.json());
+          cache.set(cacheKey, data);
+          return data;
+        },
+        { detail: { hide: true } }
+      )
   )
   // schedule route to retrieve game dates
   .get(
     "/schedule/:sport/:division/*",
-    async ({ cache, cacheKey, params, error }) => {
-      const { sport, division } = params;
-
+    async ({ cache, cacheKey, params, status }) => {
       const req = await fetch(
-        `https://data.ncaa.com/casablanca/schedule/${sport}/${division}/${params["*"]}/schedule-all-conf.json`
+        `https://data.ncaa.com/casablanca/schedule/${params.sport}/${params.division}/${params["*"]}/schedule-all-conf.json`
       );
 
       if (!req.ok) {
-        return error(404, "Resource not found");
+        return status(404, "Resource not found");
       }
 
       const data = JSON.stringify(await req.json());
       cache.set(cacheKey, data);
       return data;
-    }
+    },
+    { detail: { hide: true } }
+  )
+  .get(
+    "/schedule-alt/:sport/:division/:year",
+    async ({ cache, cacheKey, params, status }) => {
+      const sportCode =
+        newCodesBySport[params.sport as keyof typeof newCodesBySport].code;
+      if (!sportCode) {
+        return status(400, "Invalid sport");
+      }
+      const divisionCode = getDivisionCode(params.sport, params.division);
+      if (!divisionCode) {
+        return status(400, "Invalid division");
+      }
+      const url = `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"a25ad021179ce1d97fb951a49954dc98da150089f9766e7e85890e439516ffbf"}}&queryName=NCAA_schedules_today_web&variables={"sportCode":"${sportCode}","division":${divisionCode},"seasonYear":${params.year}}`;
+      const req = await fetch(url);
+
+      if (!req.ok) {
+        return status(404, "Resource not found");
+      }
+
+      const data = JSON.stringify(await req.json());
+      cache.set(cacheKey, data);
+      return data;
+    },
+    { detail: { hide: true } }
   )
   // scoreboard route to fetch data from data.ncaa.com json endpoint
   .get(
     "/scoreboard/:sport/*",
-    async ({ cache, cacheKey, params, set, error }) => {
+    async ({ cache, cacheKey, params, set, status }) => {
       const semCacheKey = getSemaphore(cacheKey);
       await semCacheKey.acquire();
       try {
@@ -264,7 +309,7 @@ export const app = new Elysia()
           // return 400 if date is more than a year in the future
           // (had runaway bot requesting every day until I noticed it in 2195)
           if (new Date(urlDate).getFullYear() > new Date().getFullYear() + 1) {
-            return error(400, "Invalid date");
+            return status(400, "Invalid date");
           }
         } else {
           // if date not in passed in url, fetch date from today.json
@@ -337,7 +382,7 @@ export const app = new Elysia()
           // fetch data
           const res = await fetch(url);
           if (!res.ok) {
-            return error(404, "Resource not found");
+            return status(404, "Resource not found");
           }
           const data = JSON.stringify(await res.json());
           cache.set(cacheKey, data);
@@ -349,18 +394,23 @@ export const app = new Elysia()
       } finally {
         semCacheKey.release();
       }
-    }
+    },
+    { detail: { hide: true } }
   )
   // all other routes fetch data by scraping ncaa.com
-  .get("/*", async ({ query: { page }, path, cache, cacheKey }) => {
-    if (cache.has(cacheKey)) {
-      return cache.get(cacheKey);
-    }
-    // fetch data
-    const data = await getData({ path, page });
-    cache.set(cacheKey, data);
-    return data;
-  })
+  .get(
+    "/*",
+    async ({ query: { page }, path, cache, cacheKey }) => {
+      if (cache.has(cacheKey)) {
+        return cache.get(cacheKey);
+      }
+      // fetch data
+      const data = JSON.stringify(await getData({ path, page }));
+      cache.set(cacheKey, data);
+      return data;
+    },
+    { detail: { hide: true } }
+  )
   .listen(3000);
 
 log(`Server is running at ${app.server?.url}`);
@@ -395,8 +445,9 @@ async function fetchGqlScoreboard(params: NewScoreboardParams) {
 /**
  * Convert new NCAA GraphQL format to old format for backwards compatibility
  * @param newData - data from new GraphQL endpoint
- * @param year - year from URL for old endpoint fallback
- * @param week - week from URL for old endpoint fallback
+ * @param sport - sport to fetch
+ * @param division - division to fetch
+ * @param date - date to fetch
  * @returns data in old format
  */
 async function convertToOldFormat(

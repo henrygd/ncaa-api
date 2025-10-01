@@ -80,7 +80,12 @@ export const getDivisionCode = (sport: string, division: string) => {
   );
 };
 
-const supportedSports = Object.keys(newCodesBySport);
+export const supportedSports = Object.keys(newCodesBySport);
+
+export const supportedDivisions = [
+  ...Object.keys(newCodesBySport.football.divisions),
+  ...Object.keys(newCodesBySport.fieldhockey.divisions),
+] as const;
 
 // TODO: check if we can just use >= 645
 export const supportedSeasons = new Set(["645", "646", "647", "648", "649"]);
@@ -108,7 +113,7 @@ export async function getScheduleBySportAndDivision(
     throw errNotSupported(sport, division);
   }
 
-  const url = `https://sdataprod.ncaa.com/?meta=NCAA_schedules_today_web&extensions={"persistedQuery":{"version":1,"sha256Hash":"a25ad021179ce1d97fb951a49954dc98da150089f9766e7e85890e439516ffbf"}}&queryName=NCAA_schedules_today_web&variables={"sportCode":"${
+  const url = `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"a25ad021179ce1d97fb951a49954dc98da150089f9766e7e85890e439516ffbf"}}&queryName=NCAA_schedules_today_web&variables={"sportCode":"${
     sportData.code
   }","division":${divisionCode},"seasonYear":${new Date().getFullYear()}}`;
 
@@ -129,78 +134,3 @@ export async function getScheduleBySportAndDivision(
   }
   return today;
 }
-
-// example response:
-// {
-//   "data": {
-//     "schedules": {
-//       "games": [
-//         {
-//           "count": 96,
-//           "contestDate": "08/23/2025-09/01/2025"
-//         },
-//         {
-//           "count": 83,
-//           "contestDate": "09/05/2025-09/07/2025"
-//         },
-//         {
-//           "count": 70,
-//           "contestDate": "09/11/2025-09/14/2025"
-//         },
-//         {
-//           "count": 62,
-//           "contestDate": "09/18/2025-09/20/2025"
-//         },
-//         {
-//           "count": 53,
-//           "contestDate": "09/25/2025-09/27/2025"
-//         },
-//         {
-//           "count": 51,
-//           "contestDate": "10/02/2025-10/04/2025"
-//         },
-//         {
-//           "count": 56,
-//           "contestDate": "10/08/2025-10/12/2025"
-//         },
-//         {
-//           "count": 60,
-//           "contestDate": "10/14/2025-10/18/2025"
-//         },
-//         {
-//           "count": 53,
-//           "contestDate": "10/21/2025-10/25/2025"
-//         },
-//         {
-//           "count": 52,
-//           "contestDate": "10/28/2025-11/01/2025"
-//         },
-//         {
-//           "count": 52,
-//           "contestDate": "11/04/2025-11/08/2025"
-//         },
-//         {
-//           "count": 59,
-//           "contestDate": "11/11/2025-11/15/2025"
-//         },
-//         {
-//           "count": 64,
-//           "contestDate": "11/18/2025-11/22/2025"
-//         },
-//         {
-//           "count": 66,
-//           "contestDate": "11/25/2025-11/29/2025"
-//         },
-//         {
-//           "count": 1,
-//           "contestDate": "12/13/2025-12/13/2025"
-//         }
-//       ],
-//       "today": {
-//         "date": "2025/2",
-//         "week": 2,
-//         "season": 2025
-//       }
-//     }
-//   }
-// }
