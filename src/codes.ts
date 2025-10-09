@@ -1,6 +1,16 @@
-export const newCodesBySport = {
+export enum Season {
+  Fall,
+  Winter,
+  Spring,
+}
+
+export const newCodesBySport: Record<
+  string,
+  { code: string; season: Season; divisions: Record<string, number> }
+> = {
   football: {
     code: "MFB",
+    season: Season.Fall,
     divisions: {
       fbs: 11,
       fcs: 12,
@@ -8,6 +18,7 @@ export const newCodesBySport = {
   },
   "basketball-men": {
     code: "MBB",
+    season: Season.Winter,
     divisions: {
       d1: 1,
       d2: 2,
@@ -15,6 +26,7 @@ export const newCodesBySport = {
   },
   "basketball-women": {
     code: "WBB",
+    season: Season.Winter,
     divisions: {
       d1: 1,
       d2: 2,
@@ -23,6 +35,7 @@ export const newCodesBySport = {
   },
   baseball: {
     code: "MBA",
+    season: Season.Spring,
     divisions: {
       d1: 1,
       d2: 2,
@@ -31,6 +44,7 @@ export const newCodesBySport = {
   },
   fieldhockey: {
     code: "WFH",
+    season: Season.Fall,
     divisions: {
       d1: 1,
       d2: 2,
@@ -39,6 +53,7 @@ export const newCodesBySport = {
   },
   "soccer-men": {
     code: "MSO",
+    season: Season.Fall,
     divisions: {
       d1: 1,
       d2: 2,
@@ -47,6 +62,7 @@ export const newCodesBySport = {
   },
   "soccer-women": {
     code: "WSO",
+    season: Season.Fall,
     divisions: {
       d1: 1,
       d2: 2,
@@ -55,12 +71,14 @@ export const newCodesBySport = {
   },
   "waterpolo-men": {
     code: "MWP",
+    season: Season.Fall,
     divisions: {
       d1: 1,
     },
   },
   "volleyball-women": {
     code: "WVB",
+    season: Season.Fall,
     divisions: {
       d1: 1,
       d2: 2,

@@ -8,9 +8,8 @@ import {
   getDivisionCode,
   getScheduleBySportAndDivision,
   newCodesBySport,
-  supportedDivisions,
+  Season,
   supportedSeasons,
-  supportedSports,
 } from "./codes";
 import { openapiSpec } from "./openapi";
 
@@ -316,14 +315,17 @@ export const app = new Elysia()
           urlDate = await getTodayUrl(params.sport, division);
         }
 
-        // Check if we should use new endpoint for D1 football in 2025
-        // Use the year from URL or today.json
+        // Check if we should use new endpoint
+        // Use the year from URL
         const effectiveYear = year || new Date().getFullYear().toString();
-        if (params.sport in newCodesBySport && effectiveYear >= "2025") {
+        const supportsNewApi =
+          effectiveYear >= "2026" ||
+          (effectiveYear === "2025" &&
+            newCodesBySport[params.sport]?.season === Season.Fall);
+
+        if (params.sport in newCodesBySport && supportsNewApi) {
           try {
-            const sportCode =
-              newCodesBySport[params.sport as keyof typeof newCodesBySport]
-                .code;
+            const sportCode = newCodesBySport[params.sport].code;
             // Check week-based cache first for shared caching
             const weekCacheKey = `${sportCode}_${division}_${urlDate}`;
             if (cache.has(weekCacheKey)) {
@@ -421,7 +423,7 @@ log(`Server is running at ${app.server?.url}`);
 
 interface NewScoreboardParams {
   sportCode: string;
-  division: string;
+  division: number;
   seasonYear: number;
   week?: number;
   contestDate?: string;
