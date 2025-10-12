@@ -8,40 +8,7 @@ export const newCodesBySport: Record<
   string,
   { code: string; season: Season; divisions: Record<string, number> }
 > = {
-  football: {
-    code: "MFB",
-    season: Season.Fall,
-    divisions: {
-      fbs: 11,
-      fcs: 12,
-    },
-  },
-  "basketball-men": {
-    code: "MBB",
-    season: Season.Winter,
-    divisions: {
-      d1: 1,
-      d2: 2,
-    },
-  },
-  "basketball-women": {
-    code: "WBB",
-    season: Season.Winter,
-    divisions: {
-      d1: 1,
-      d2: 2,
-      d3: 3,
-    },
-  },
-  baseball: {
-    code: "MBA",
-    season: Season.Spring,
-    divisions: {
-      d1: 1,
-      d2: 2,
-      d3: 3,
-    },
-  },
+  ////// FALL SPORTS //////
   fieldhockey: {
     code: "WFH",
     season: Season.Fall,
@@ -49,6 +16,14 @@ export const newCodesBySport: Record<
       d1: 1,
       d2: 2,
       d3: 3,
+    },
+  },
+  football: {
+    code: "MFB",
+    season: Season.Fall,
+    divisions: {
+      fbs: 11,
+      fcs: 12,
     },
   },
   "soccer-men": {
@@ -69,13 +44,6 @@ export const newCodesBySport: Record<
       d3: 3,
     },
   },
-  "waterpolo-men": {
-    code: "MWP",
-    season: Season.Fall,
-    divisions: {
-      d1: 1,
-    },
-  },
   "volleyball-women": {
     code: "WVB",
     season: Season.Fall,
@@ -83,6 +51,99 @@ export const newCodesBySport: Record<
       d1: 1,
       d2: 2,
       d3: 3,
+    },
+  },
+  "waterpolo-men": {
+    code: "MWP",
+    season: Season.Fall,
+    divisions: {
+      d1: 1,
+    },
+  },
+  ////// WINTER SPORTS //////
+  "basketball-men": {
+    code: "MBB",
+    season: Season.Winter,
+    divisions: {
+      d1: 1,
+      d2: 2,
+    },
+  },
+  "basketball-women": {
+    code: "WBB",
+    season: Season.Winter,
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  "icehockey-men": {
+    code: "MIH",
+    season: Season.Winter,
+    divisions: {
+      d1: 1,
+      d3: 3,
+    },
+  },
+  "icehockey-women": {
+    code: "WIH",
+    season: Season.Winter,
+    divisions: {
+      d1: 1,
+      d3: 3,
+    },
+  },
+  ////// SPRING SPORTS //////
+  baseball: {
+    code: "MBA",
+    season: Season.Spring,
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  "lacrosse-men": {
+    code: "MLA",
+    season: Season.Spring,
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  "lacrosse-women": {
+    code: "WLA",
+    season: Season.Spring,
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  softball: {
+    code: "WSB",
+    season: Season.Spring,
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  "volleyball-men": {
+    code: "MVB",
+    season: Season.Spring,
+    divisions: {
+      d1: 1,
+      d3: 3,
+    },
+  },
+  "waterpolo-women": {
+    code: "WWP",
+    season: Season.Spring,
+    divisions: {
+      d1: 1,
     },
   },
 };
