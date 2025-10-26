@@ -321,7 +321,7 @@ export const app = new Elysia()
         const supportsNewApi =
           effectiveYear >= "2026" ||
           (effectiveYear === "2025" &&
-            newCodesBySport[params.sport]?.season === Season.Fall);
+            [Season.Fall, Season.Winter].includes(newCodesBySport[params.sport]?.season));
 
         if (params.sport in newCodesBySport && supportsNewApi) {
           try {
