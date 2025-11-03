@@ -4,12 +4,13 @@ import { Elysia, NotFoundError, t } from "elysia";
 import ExpiryMap from "expiry-map";
 import { parseHTML } from "linkedom";
 import {
+  customHashesBySeason,
   type DivisionKey,
   getDivisionCode,
   getScheduleBySportAndDivision,
   newCodesBySport,
   Season,
-  supportedSeasons,
+  seasonIsNewFormat,
 } from "./codes";
 import { openapiSpec } from "./openapi";
 
@@ -127,11 +128,10 @@ export const app = new Elysia()
       .get(
         "/:id/boxscore",
         async ({ cache, cacheKey, status, params: { id } }) => {
-          // new football boxscore graphql endpoint
-          if (supportedSeasons.has(id.slice(0, 3))) {
-            const req = await fetch(
-              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e"}}&variables={"contestId":"${id}","staticTestEnv":null}`
-            );
+          // new boxscore graphql endpoint
+          if (seasonIsNewFormat(id)) {
+            const hash = customHashesBySeason[id.slice(0, 3)]?.boxscore ?? "babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e"
+            const req = await fetch(`https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`);
             if (req.ok) {
               const json = await req.json();
               if (json?.data?.boxscore) {
@@ -158,9 +158,10 @@ export const app = new Elysia()
         "/:id/play-by-play",
         async ({ cache, cacheKey, status, params: { id } }) => {
           // new football play by play graphql endpoint
-          if (supportedSeasons.has(id.slice(0, 3))) {
+          if (seasonIsNewFormat(id)) {
+            const hash = customHashesBySeason[id.slice(0, 3)]?.playbyplay ?? "47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2"
             const req = await fetch(
-              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
             );
             if (req.ok) {
               const json = await req.json();
@@ -187,7 +188,7 @@ export const app = new Elysia()
         "/:id/scoring-summary",
         async ({ cache, cacheKey, status, params: { id } }) => {
           // new football scoring summary graphql endpoint
-          if (supportedSeasons.has(id.slice(0, 3))) {
+          if (seasonIsNewFormat(id)) {
             const req = await fetch(
               `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198"}}&variables={"contestId":"${id}","staticTestEnv":null}`
             );
@@ -216,9 +217,10 @@ export const app = new Elysia()
         "/:id/team-stats",
         async ({ cache, cacheKey, status, params: { id } }) => {
           // new football team stats graphql endpoint
-          if (supportedSeasons.has(id.slice(0, 3))) {
+          if (seasonIsNewFormat(id)) {
+            const hash = customHashesBySeason[id.slice(0, 3)]?.teamStats ?? "b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd"
             const req = await fetch(
-              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
             );
             if (req.ok) {
               const json = await req.json();
@@ -675,9 +677,8 @@ async function getTodayUrl(sport: string, division: string): Promise<string> {
  */
 async function getData(opts: { path: string; page?: string }) {
   // fetch html
-  const url = `https://www.ncaa.com${opts.path}${
-    opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ""
-  }`;
+  const url = `https://www.ncaa.com${opts.path}${opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ""
+    }`;
   log(`Fetching ${url}`);
   const res = await fetch(url);
 

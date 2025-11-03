@@ -174,6 +174,23 @@ describe("General", () => {
     expect(today).toBeString();
     expect(today).toContain(new Date().getFullYear().toString());
   });
+
+  // Tests for new basketball hashes (seasons 650, 651, 653, 654)
+  it("basketball boxscore with new hashes returns good data", async () => {
+    const gameId = "6506241";
+    const response = await app.handle(
+      new Request(`http://localhost/game/${gameId}/boxscore`)
+    );
+    // Skip test if game doesn't exist yet (404), but validate structure if it does
+    if (response.status === 200) {
+      expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+      const data = await response.json();
+      expect(data).toContainKeys(["teams", "teamBoxscore"]);
+      expect(data.teamBoxscore[0]?.teamStats).toContainKey("fieldGoalsMade");
+    } else {
+      expect(response.status).toBe(404);
+    }
+  });
 });
 
 describe("Header validation", () => {
