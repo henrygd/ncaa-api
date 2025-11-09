@@ -6,11 +6,10 @@ import { parseHTML } from "linkedom";
 import {
   customHashesBySeason,
   type DivisionKey,
+  doesSupportScoreboardNewApi,
   getDivisionCode,
   getScheduleBySportAndDivision,
   newCodesBySport,
-  Season,
-  seasonIsNewFormat,
 } from "./codes";
 import { openapiSpec } from "./openapi";
 
@@ -128,118 +127,121 @@ export const app = new Elysia()
       .get(
         "/:id/boxscore",
         async ({ cache, cacheKey, status, params: { id } }) => {
-          // new boxscore graphql endpoint
-          if (seasonIsNewFormat(id)) {
-            const hash = customHashesBySeason[id.slice(0, 3)]?.boxscore ?? "babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e"
-            const req = await fetch(`https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`);
-            if (req.ok) {
-              const json = await req.json();
-              if (json?.data?.boxscore) {
-                const data = JSON.stringify(json.data.boxscore);
-                cache.set(cacheKey, data);
-                return data;
-              }
-            }
+          // if (seasonIsNewFormat(id)) {
+          const hash = customHashesBySeason[id.slice(0, 3)]?.boxscore ?? "babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e"
+          const req = await fetch(`https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`);
+          // if (req.ok) {
+          const json = await req.json();
+          if (json?.data?.boxscore) {
+            const data = JSON.stringify(json.data.boxscore);
+            cache.set(cacheKey, data);
+            return data;
           }
-          // handle other game routes
-          const req = await fetch(
-            `https://data.ncaa.com/casablanca/game/${id}/boxscore.json`
-          );
-          if (!req.ok) {
-            return status(404, "Resource not found");
-          }
-          const data = JSON.stringify(await req.json());
-          cache.set(cacheKey, data);
-          return data;
+          return status(502, "Error fetching data");
+          // }
+          // }
+          //  this is apparently turned off as of 2025-11-09
+          // const req = await fetch(
+          //   `https://data.ncaa.com/casablanca/game/${id}/boxscore.json`
+          // );
+          // if (!req.ok) {
+          //   return status(404, "Resource not found");
+          // }
+          // const data = JSON.stringify(await req.json());
+          // cache.set(cacheKey, data);
+          // return data;
         },
         { detail: { hide: true } }
       )
       .get(
         "/:id/play-by-play",
         async ({ cache, cacheKey, status, params: { id } }) => {
-          // new football play by play graphql endpoint
-          if (seasonIsNewFormat(id)) {
-            const hash = customHashesBySeason[id.slice(0, 3)]?.playbyplay ?? "47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2"
-            const req = await fetch(
-              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
-            );
-            if (req.ok) {
-              const json = await req.json();
-              if (json?.data?.playbyplay) {
-                const data = JSON.stringify(json.data.playbyplay);
-                cache.set(cacheKey, data);
-                return data;
-              }
+          // if (seasonIsNewFormat(id)) {
+          const hash = customHashesBySeason[id.slice(0, 3)]?.playbyplay ?? "47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2"
+          const req = await fetch(
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+          );
+          if (req.ok) {
+            const json = await req.json();
+            if (json?.data?.playbyplay) {
+              const data = JSON.stringify(json.data.playbyplay);
+              cache.set(cacheKey, data);
+              return data;
             }
           }
-          const req = await fetch(
-            `https://data.ncaa.com/casablanca/game/${id}/pbp.json`
-          );
-          if (!req.ok) {
-            return status(404, "Resource not found");
-          }
-          const data = JSON.stringify(await req.json());
-          cache.set(cacheKey, data);
-          return data;
+          return status(502, "Error fetching data");
+          // }
+          //  this is apparently turned off as of 2025-11-09
+          // const req = await fetch(
+          //   `https://data.ncaa.com/casablanca/game/${id}/pbp.json`
+          // );
+          // if (!req.ok) {
+          //   return status(404, "Resource not found");
+          // }
+          // const data = JSON.stringify(await req.json());
+          // cache.set(cacheKey, data);
+          // return data;
         },
         { detail: { hide: true } }
       )
       .get(
         "/:id/scoring-summary",
         async ({ cache, cacheKey, status, params: { id } }) => {
-          // new football scoring summary graphql endpoint
-          if (seasonIsNewFormat(id)) {
-            const req = await fetch(
-              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198"}}&variables={"contestId":"${id}","staticTestEnv":null}`
-            );
-            if (req.ok) {
-              const json = await req.json();
-              if (json?.data?.scoringSummary) {
-                const data = JSON.stringify(json.data.scoringSummary);
-                cache.set(cacheKey, data);
-                return data;
-              }
+          // if (seasonIsNewFormat(id)) {
+          const hash = customHashesBySeason[id.slice(0, 3)]?.scoringSummary ?? "7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198"
+          const req = await fetch(
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+          );
+          if (req.ok) {
+            const json = await req.json();
+            if (json?.data?.scoringSummary) {
+              const data = JSON.stringify(json.data.scoringSummary);
+              cache.set(cacheKey, data);
+              return data;
             }
           }
-          const req = await fetch(
-            `https://data.ncaa.com/casablanca/game/${id}/scoringSummary.json`
-          );
-          if (!req.ok) {
-            return status(404, "Resource not found");
-          }
-          const data = JSON.stringify(await req.json());
-          cache.set(cacheKey, data);
-          return data;
+          return status(502, "Error fetching data");
+          // }
+          //  this is apparently turned off as of 2025-11-09
+          // const req = await fetch(
+          //   `https://data.ncaa.com/casablanca/game/${id}/scoringSummary.json`
+          // );
+          // if (!req.ok) {
+          //   return status(404, "Resource not found");
+          // }
+          // const data = JSON.stringify(await req.json());
+          // cache.set(cacheKey, data);
+          // return data;
         },
         { detail: { hide: true } }
       )
       .get(
         "/:id/team-stats",
         async ({ cache, cacheKey, status, params: { id } }) => {
-          // new football team stats graphql endpoint
-          if (seasonIsNewFormat(id)) {
-            const hash = customHashesBySeason[id.slice(0, 3)]?.teamStats ?? "b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd"
-            const req = await fetch(
-              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
-            );
-            if (req.ok) {
-              const json = await req.json();
-              if (json?.data?.boxscore) {
-                const data = JSON.stringify(json.data.boxscore);
-                cache.set(cacheKey, data);
-                return data;
-              }
+          // if (seasonIsNewFormat(id)) {
+          const hash = customHashesBySeason[id.slice(0, 3)]?.teamStats ?? "b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd"
+          const req = await fetch(
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+          );
+          if (req.ok) {
+            const json = await req.json();
+            if (json?.data?.boxscore) {
+              const data = JSON.stringify(json.data.boxscore);
+              cache.set(cacheKey, data);
+              return data;
             }
           }
-          const req = await fetch(
-            `https://data.ncaa.com/casablanca/game/${id}/teamStats.json`
-          );
-          if (!req.ok) {
-            return status(404, "Resource not found");
-          }
-          const data = JSON.stringify(await req.json());
-          cache.set(cacheKey, data);
-          return data;
+          // }
+          // this is apparently turned off as of 2025-11-09
+          // const req = await fetch(
+          //   `https://data.ncaa.com/casablanca/game/${id}/teamStats.json`
+          // );
+          // if (!req.ok) {
+          //   return status(404, "Resource not found");
+          // }
+          // const data = JSON.stringify(await req.json());
+          // cache.set(cacheKey, data);
+          // return data;
         },
         { detail: { hide: true } }
       )
@@ -317,15 +319,15 @@ export const app = new Elysia()
           urlDate = await getTodayUrl(params.sport, division);
         }
 
-        // Check if we should use new endpoint
-        // Use the year from URL
-        const effectiveYear = year || new Date().getFullYear().toString();
-        const supportsNewApi =
-          effectiveYear >= "2026" ||
-          (effectiveYear === "2025" &&
-            [Season.Fall, Season.Winter].includes(newCodesBySport[params.sport]?.season));
+        const scoreboardDate = new Date(urlDate);
 
-        if (params.sport in newCodesBySport && supportsNewApi) {
+        // Use the year from URL
+        const effectiveYear = parseInt(year, 10) || new Date().getFullYear();
+
+        // Check if we should use new endpoint
+        const supportsNewApi = doesSupportScoreboardNewApi(params.sport, effectiveYear, scoreboardDate.getMonth());
+
+        if (supportsNewApi && params.sport in newCodesBySport) {
           try {
             const sportCode = newCodesBySport[params.sport].code;
             // Check week-based cache first for shared caching
@@ -340,7 +342,7 @@ export const app = new Elysia()
             const newParams: NewScoreboardParams = {
               sportCode,
               division: divisionCode,
-              seasonYear: parseInt(effectiveYear, 10),
+              seasonYear: effectiveYear,
             };
 
             if (sportCode === "MFB") {
@@ -476,18 +478,20 @@ async function convertToOldFormat(
 
   // Try to fetch old format data to get missing fields
   let oldFormatData = null;
-  try {
-    // Format week with leading zero for old endpoint compatibility
-    const oldUrl = `https://data.ncaa.com/casablanca/scoreboard/${sport}/${division}/${date}/scoreboard.json`;
-    const oldResponse = await fetch(oldUrl);
-    if (oldResponse.ok) {
-      oldFormatData = await oldResponse.json();
-    } else {
-      console.log(`Old endpoint returned status: ${oldResponse.status}`);
+  if (!sport.startsWith("basket")) { // basketball is always 404
+    try {
+      // Format week with leading zero for old endpoint compatibility
+      const oldUrl = `https://data.ncaa.com/casablanca/scoreboard/${sport}/${division}/${date}/scoreboard.json`;
+      const oldResponse = await fetch(oldUrl);
+      if (oldResponse.ok) {
+        oldFormatData = await oldResponse.json();
+      } else {
+        console.log(`Old endpoint returned status: ${oldResponse.status}`);
+      }
+    } catch (err) {
+      // If old endpoint fails, continue with new data only
+      console.log("Could not fetch old format data:", err);
     }
-  } catch (err) {
-    // If old endpoint fails, continue with new data only
-    console.log("Could not fetch old format data:", err);
   }
 
   const contests = newData?.data?.contests || [];

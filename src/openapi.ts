@@ -91,7 +91,7 @@ export const openapiSpec = openapi({
         get: {
           summary: "Game boxscore",
           description:
-            "Note that response format is different for seasons starting in Fall 2025 or later (game IDs starting with `645` or higher).\n\nhttps://www.ncaa.com/game/6459218/boxscore",
+            "Due to upstream changes, some seasons may not return data for game subroutes. Please open an issue if you encounter this.",
           parameters: [
             {
               name: "id",
@@ -107,7 +107,7 @@ export const openapiSpec = openapi({
         get: {
           summary: "Game play by play",
           description:
-            "Note that response format is different for seasons starting in Fall 2025 or later (game IDs starting with `645` or higher).\n\nhttps://www.ncaa.com/game/6459218/play-by-play",
+            "Due to upstream changes, some seasons may not return data for game subroutes. Please open an issue if you encounter this.",
           parameters: [
             {
               name: "id",
@@ -123,7 +123,7 @@ export const openapiSpec = openapi({
         get: {
           summary: "Game scoring summary",
           description:
-            "Note that response format is different for seasons starting in Fall 2025 or later (game IDs starting with `645` or higher).\n\nhttps://www.ncaa.com/game/6459218/scoring-summary",
+            "Due to upstream changes, some seasons may not return data for game subroutes. Please open an issue if you encounter this.",
         },
         parameters: [
           {
@@ -139,7 +139,7 @@ export const openapiSpec = openapi({
         get: {
           summary: "Game team stats",
           description:
-            "Note that response format is different for seasons starting in Fall 2025 or later (game IDs starting with `645` or higher).\n\nhttps://www.ncaa.com/game/6459218/team-stats",
+            "Due to upstream changes, some seasons may not return data for game subroutes. Please open an issue if you encounter this.",
         },
         parameters: [
           {

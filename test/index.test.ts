@@ -59,8 +59,7 @@ describe("General", () => {
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     const data = await response.json();
     expect(data).toContainKey("teams");
-    expect(data.meta.title).toContain("oxscore");
-    expect(data.meta).toContainKeys(["status", "period", "teams"]);
+    expect(data.teamBoxscore?.[0]?.playerStats).toBeArray();
   });
   it("game play by play route returns good data", async () => {
     const response = await app.handle(
@@ -70,8 +69,8 @@ describe("General", () => {
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     const data = await response.json();
     expect(data).toContainKey("periods");
-    expect(data.meta.title).toBe("PLAY-BY-PLAY");
-    expect(data.meta).toContainKeys(["title", "teams"]);
+    expect(data.periods).toBeArray();
+    expect(data.periods[0]?.playbyplayStats).toBeArray()
   });
   it("game team stats route returns good data", async () => {
     const response = await app.handle(
@@ -81,8 +80,7 @@ describe("General", () => {
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     const data = await response.json();
     expect(data).toContainKey("teams");
-    expect(data.meta.title).toBe("TEAM STATS");
-    expect(data.meta).toContainKeys(["title", "teams"]);
+    expect(data.teamBoxscore?.[0]?.teamStats).toBeObject()
   });
   it("game scoring summary route returns good data", async () => {
     const response = await app.handle(
@@ -92,8 +90,7 @@ describe("General", () => {
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     const data = await response.json();
     expect(data).toContainKey("periods");
-    expect(data.meta.title).toBe("SCORING");
-    expect(data.meta).toContainKeys(["title", "teams"]);
+    expect(data.periods[0]?.summary).toBeArray()
   });
   it("schools index route returns good data", async () => {
     const response = await app.handle(
