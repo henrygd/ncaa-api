@@ -67,6 +67,7 @@ export const newCodesBySport: Record<
     divisions: {
       d1: 1,
       d2: 2,
+      d3: 3,
     },
   },
   "basketball-women": {
