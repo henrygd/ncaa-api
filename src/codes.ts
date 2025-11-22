@@ -149,6 +149,7 @@ export const customHashesBySeason: Record<string, Record<string, string>> = {
 
   '650': basketballHashes,
   '651': basketballHashes,
+  '652': basketballHashes,
   '653': basketballHashes,
   '654': basketballHashes,
 }
