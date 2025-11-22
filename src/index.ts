@@ -72,7 +72,6 @@ export const app = new Elysia()
         return status(500, "Error fetching data");
       }
     },
-    { detail: { hide: true } }
   )
   // validate request / set cache key
   .resolve(({ request, path, query: { page }, status, redirect, set }) => {

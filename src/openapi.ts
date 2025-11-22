@@ -18,6 +18,9 @@ const sportExamples = makeExamples(supportedSports);
 const divisionExamples = makeExamples(Object.values(supportedDivisions));
 
 export const openapiSpec = openapi({
+  scalar: {
+    hideClientButton: true,
+  },
   documentation: {
     // servers: [
     //   {
@@ -33,7 +36,7 @@ export const openapiSpec = openapi({
       title: "NCAA API",
       description:
         "API to return consumable data from ncaa.com. You can also [host your own deployment](https://github.com/henrygd/ncaa-api#deployment).\n\nThe public API is limited to 5 requests per second per IP.\n\nhttps://github.com/henrygd/ncaa-api\n\nhttps://buymeacoffee.com/henrygd",
-      version: "3.0.0",
+      version: "3.1.0",
       license: {
         name: "MIT",
         url: "https://github.com/henrygd/ncaa-api/blob/master/LICENSE",
