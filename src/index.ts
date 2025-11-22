@@ -1,6 +1,6 @@
 import { getSemaphore } from "@henrygd/semaphore";
 import { createHash } from "crypto";
-import { Elysia, NotFoundError, t } from "elysia";
+import { Elysia, NotFoundError } from "elysia";
 import ExpiryMap from "expiry-map";
 import { parseHTML } from "linkedom";
 import {
@@ -52,8 +52,30 @@ export const app = new Elysia()
   })
   // redirect index to github page
   .get("/", ({ redirect }) => redirect("/openapi"), { detail: { hide: true } })
+  // fetch and return logo svg
+  .get(
+    "/logo/:school",
+    async ({ params: { school }, set, status }) => {
+      const url = `https://www.ncaa.com/sites/default/files/images/logos/schools/bgd/${school.replace(".svg", "")}.svg`;
+      const res = await fetch(url);
+
+      if (!res.ok) {
+        return status(404, "Logo not found");
+      }
+
+      try {
+        const svgContent = await res.text();
+        set.headers["Content-Type"] = "image/svg+xml";
+        set.headers["Cache-Control"] = "public, max-age=604800";
+        return svgContent;
+      } catch (_) {
+        return status(500, "Error fetching data");
+      }
+    },
+    { detail: { hide: true } }
+  )
   // validate request / set cache key
-  .resolve(({ request, path, query: { page }, status }) => {
+  .resolve(({ request, path, query: { page }, status, redirect, set }) => {
     // validate custom header value
     if (
       process.env.NCAA_HEADER_KEY &&
@@ -128,8 +150,12 @@ export const app = new Elysia()
         "/:id/boxscore",
         async ({ cache, cacheKey, status, params: { id } }) => {
           // if (seasonIsNewFormat(id)) {
-          const hash = customHashesBySeason[id.slice(0, 3)]?.boxscore ?? "babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e"
-          const req = await fetch(`https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`);
+          const hash =
+            customHashesBySeason[id.slice(0, 3)]?.boxscore ??
+            "babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e";
+          const req = await fetch(
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+          );
           // if (req.ok) {
           const json = await req.json();
           if (json?.data?.boxscore) {
@@ -157,7 +183,9 @@ export const app = new Elysia()
         "/:id/play-by-play",
         async ({ cache, cacheKey, status, params: { id } }) => {
           // if (seasonIsNewFormat(id)) {
-          const hash = customHashesBySeason[id.slice(0, 3)]?.playbyplay ?? "47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2"
+          const hash =
+            customHashesBySeason[id.slice(0, 3)]?.playbyplay ??
+            "47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2";
           const req = await fetch(
             `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
           );
@@ -188,7 +216,9 @@ export const app = new Elysia()
         "/:id/scoring-summary",
         async ({ cache, cacheKey, status, params: { id } }) => {
           // if (seasonIsNewFormat(id)) {
-          const hash = customHashesBySeason[id.slice(0, 3)]?.scoringSummary ?? "7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198"
+          const hash =
+            customHashesBySeason[id.slice(0, 3)]?.scoringSummary ??
+            "7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198";
           const req = await fetch(
             `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
           );
@@ -219,7 +249,9 @@ export const app = new Elysia()
         "/:id/team-stats",
         async ({ cache, cacheKey, status, params: { id } }) => {
           // if (seasonIsNewFormat(id)) {
-          const hash = customHashesBySeason[id.slice(0, 3)]?.teamStats ?? "b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd"
+          const hash =
+            customHashesBySeason[id.slice(0, 3)]?.teamStats ??
+            "b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd";
           const req = await fetch(
             `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
           );
@@ -325,7 +357,11 @@ export const app = new Elysia()
         const effectiveYear = parseInt(year, 10) || new Date().getFullYear();
 
         // Check if we should use new endpoint
-        const supportsNewApi = doesSupportScoreboardNewApi(params.sport, effectiveYear, scoreboardDate.getMonth());
+        const supportsNewApi = doesSupportScoreboardNewApi(
+          params.sport,
+          effectiveYear,
+          scoreboardDate.getMonth()
+        );
 
         if (supportsNewApi && params.sport in newCodesBySport) {
           try {
@@ -478,7 +514,8 @@ async function convertToOldFormat(
 
   // Try to fetch old format data to get missing fields
   let oldFormatData = null;
-  if (!sport.startsWith("basket")) { // basketball is always 404
+  if (!sport.startsWith("basket")) {
+    // basketball is always 404
     try {
       // Format week with leading zero for old endpoint compatibility
       const oldUrl = `https://data.ncaa.com/casablanca/scoreboard/${sport}/${division}/${date}/scoreboard.json`;

@@ -313,6 +313,21 @@ export const openapiSpec = openapi({
             "Returns a list of all schools with slug, name, and long name.\n\nhttps://www.ncaa.com/schools-index",
         },
       },
+      "/logo/{school}.svg": {
+        get: {
+          summary: "Logos",
+          description: "Logos for all NCAA schools. Use the school `slug` or `team_seo` property.",
+        },
+        parameters: [
+          {
+            name: "school",
+            in: "path",
+            schema: { type: "string" },
+            required: true,
+            examples: makeExamples(["michigan", "slippery-rock"]),
+          },
+        ],
+      },
     },
   },
 });

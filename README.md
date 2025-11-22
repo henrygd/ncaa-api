@@ -2,7 +2,7 @@
 
 Free API to return consumable data from ncaa.com.
 
-Works with scores, stats, rankings, standings, schedules, history, and game details (box score, play by play, scoring summary, team stats).
+Works with scores, stats, rankings, standings, schedules, history, logos, and game details (box score, play by play, scoring summary, team stats).
 
 Try it out here: <https://ncaa-api.henrygd.me/openapi>
 
@@ -24,7 +24,9 @@ The following URL parameters are supported:
 
 ## Routes
 
-### Scores
+All routes can be tested here: <https://ncaa-api.henrygd.me/openapi>
+
+### Scoreboard
 
 Fetches live scores for a given sport, division, and date.
 
@@ -377,13 +379,13 @@ The app should be available at [http://localhost:3000](http://localhost:3000/his
 
 ## Limiting Access
 
-If you host your own instance, you may specify a custom header value to be present in all requests as a way to restrict access to the API. This isn't the most secure method, but it's better than nothing.
+If you host your own instance, you may specify a custom header value to be present in all requests as a way to restrict access to the API.
 
 To do this, set the `NCAA_HEADER_KEY` environment variable to the desired value and include the header `x-ncaa-key` in your requests. See the [docker-compose.yml](/docker-compose.yml) for an example.
 
 ## Development
 
-This is a minimal [ElysiaJS](https://elysiajs.com/) app. To start the development server run:
+This is an [ElysiaJS](https://elysiajs.com/) application. To start the development server run:
 
 ```bash
 bun run dev
