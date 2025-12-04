@@ -16,19 +16,19 @@ export const newCodesBySport: Record<
   { code: string; divisions: Record<string, number>; metas?: Record<string, string> }
 > = {
   ////// FALL SPORTS //////
+  football: {
+    code: "MFB",
+    divisions: {
+      fbs: 11,
+      fcs: 12,
+    },
+  },
   fieldhockey: {
     code: "WFH",
     divisions: {
       d1: 1,
       d2: 2,
       d3: 3,
-    },
-  },
-  football: {
-    code: "MFB",
-    divisions: {
-      fbs: 11,
-      fcs: 12,
     },
   },
   "soccer-men": {

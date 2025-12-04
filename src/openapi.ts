@@ -327,8 +327,16 @@ export const openapiSpec = openapi({
             in: "path",
             schema: { type: "string" },
             required: true,
-            examples: makeExamples(["michigan", "slippery-rock"]),
+            examples: makeExamples(["michigan", "slippery-rock", "iowa"]),
           },
+          {
+            name: "dark",
+            in: "query",
+            schema: { type: "boolean" },
+            required: false,
+            examples: makeExamples(["false", "true"]),
+            description: "Set to `true` to get a version of the logo that works better on dark backgrounds.",
+          }
         ],
       },
     },

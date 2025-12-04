@@ -37,7 +37,7 @@ const validRoutes = new Map([
 /** log message to console with timestamp */
 function log(str: string) {
   console.log(
-    `[${new Date().toISOString().substring(0, 19).replace("T", " ")}] ${str}`
+    `[${new Date().toISOString().substring(0, 19).replace("T", " ")}] ${str}`,
   );
 }
 
@@ -55,8 +55,9 @@ export const app = new Elysia()
   // fetch and return logo svg
   .get(
     "/logo/:school",
-    async ({ params: { school }, set, status }) => {
-      const url = `https://www.ncaa.com/sites/default/files/images/logos/schools/bgd/${school.replace(".svg", "")}.svg`;
+    async ({ params: { school }, query: { dark }, set, status }) => {
+      const bgParam = (dark !== undefined && dark !== "false") ? "bgd" : "bgl";
+      const url = `https://www.ncaa.com/sites/default/files/images/logos/schools/${bgParam}/${school.replace(".svg", "")}.svg`;
       const res = await fetch(url);
 
       if (!res.ok) {
@@ -72,6 +73,7 @@ export const app = new Elysia()
         return status(500, "Error fetching data");
       }
     },
+    { detail: { hide: true } },
   )
   // validate request / set cache key
   .resolve(({ request, path, query: { page }, status, redirect, set }) => {
@@ -116,7 +118,7 @@ export const app = new Elysia()
             slug: school.slug,
             name: school.name?.trim(),
             long: school.long_name?.trim(),
-          })
+          }),
         );
         const data = JSON.stringify(json);
         cache.set(cacheKey, data);
@@ -125,7 +127,7 @@ export const app = new Elysia()
         return status(500, "Error fetching data");
       }
     },
-    { detail: { hide: true } }
+    { detail: { hide: true } },
   )
   .group("/game", (app) =>
     app
@@ -134,7 +136,7 @@ export const app = new Elysia()
         "/:id",
         async ({ cache, cacheKey, status, params: { id } }) => {
           const req = await fetch(
-            `https://sdataprod.ncaa.com/?meta=GetGamecenterGameById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2293a02c7193c89d85bcdda8c1784925d9b64657f73ef584382e2297af555acd4b%22}}&variables={%22id%22:%22${id}%22,%22week%22:null,%22staticTestEnv%22:null}`
+            `https://sdataprod.ncaa.com/?meta=GetGamecenterGameById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2293a02c7193c89d85bcdda8c1784925d9b64657f73ef584382e2297af555acd4b%22}}&variables={%22id%22:%22${id}%22,%22week%22:null,%22staticTestEnv%22:null}`,
           );
           if (!req.ok) {
             return status(404, "Resource not found");
@@ -143,7 +145,7 @@ export const app = new Elysia()
           cache.set(cacheKey, data);
           return data;
         },
-        { detail: { hide: true } }
+        { detail: { hide: true } },
       )
       .get(
         "/:id/boxscore",
@@ -153,7 +155,7 @@ export const app = new Elysia()
             customHashesBySeason[id.slice(0, 3)]?.boxscore ??
             "babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e";
           const req = await fetch(
-            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`,
           );
           // if (req.ok) {
           const json = await req.json();
@@ -176,7 +178,7 @@ export const app = new Elysia()
           // cache.set(cacheKey, data);
           // return data;
         },
-        { detail: { hide: true } }
+        { detail: { hide: true } },
       )
       .get(
         "/:id/play-by-play",
@@ -186,7 +188,7 @@ export const app = new Elysia()
             customHashesBySeason[id.slice(0, 3)]?.playbyplay ??
             "47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2";
           const req = await fetch(
-            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`,
           );
           if (req.ok) {
             const json = await req.json();
@@ -209,7 +211,7 @@ export const app = new Elysia()
           // cache.set(cacheKey, data);
           // return data;
         },
-        { detail: { hide: true } }
+        { detail: { hide: true } },
       )
       .get(
         "/:id/scoring-summary",
@@ -219,7 +221,7 @@ export const app = new Elysia()
             customHashesBySeason[id.slice(0, 3)]?.scoringSummary ??
             "7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198";
           const req = await fetch(
-            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`,
           );
           if (req.ok) {
             const json = await req.json();
@@ -242,7 +244,7 @@ export const app = new Elysia()
           // cache.set(cacheKey, data);
           // return data;
         },
-        { detail: { hide: true } }
+        { detail: { hide: true } },
       )
       .get(
         "/:id/team-stats",
@@ -252,7 +254,7 @@ export const app = new Elysia()
             customHashesBySeason[id.slice(0, 3)]?.teamStats ??
             "b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd";
           const req = await fetch(
-            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`,
           );
           if (req.ok) {
             const json = await req.json();
@@ -274,15 +276,15 @@ export const app = new Elysia()
           // cache.set(cacheKey, data);
           // return data;
         },
-        { detail: { hide: true } }
-      )
+        { detail: { hide: true } },
+      ),
   )
   // schedule route to retrieve game dates
   .get(
     "/schedule/:sport/:division/*",
     async ({ cache, cacheKey, params, status }) => {
       const req = await fetch(
-        `https://data.ncaa.com/casablanca/schedule/${params.sport}/${params.division}/${params["*"]}/schedule-all-conf.json`
+        `https://data.ncaa.com/casablanca/schedule/${params.sport}/${params.division}/${params["*"]}/schedule-all-conf.json`,
       );
 
       if (!req.ok) {
@@ -293,7 +295,7 @@ export const app = new Elysia()
       cache.set(cacheKey, data);
       return data;
     },
-    { detail: { hide: true } }
+    { detail: { hide: true } },
   )
   .get(
     "/schedule-alt/:sport/:division/:year",
@@ -318,7 +320,7 @@ export const app = new Elysia()
       cache.set(cacheKey, data);
       return data;
     },
-    { detail: { hide: true } }
+    { detail: { hide: true } },
   )
   // scoreboard route to fetch data from data.ncaa.com json endpoint
   .get(
@@ -359,7 +361,7 @@ export const app = new Elysia()
         const supportsNewApi = doesSupportScoreboardNewApi(
           params.sport,
           effectiveYear,
-          scoreboardDate.getMonth()
+          scoreboardDate.getMonth(),
         );
 
         if (supportsNewApi && params.sport in newCodesBySport) {
@@ -391,7 +393,7 @@ export const app = new Elysia()
               newData,
               params.sport,
               division,
-              urlDate
+              urlDate,
             );
             const data = JSON.stringify(convertedData);
 
@@ -403,7 +405,7 @@ export const app = new Elysia()
             return data;
           } catch (err) {
             log(
-              `Failed to fetch from new endpoint, falling back to old endpoint: ${err}`
+              `Failed to fetch from new endpoint, falling back to old endpoint: ${err}`,
             );
             // Fall through to old endpoint logic
           }
@@ -436,7 +438,7 @@ export const app = new Elysia()
         semCacheKey.release();
       }
     },
-    { detail: { hide: true } }
+    { detail: { hide: true } },
   )
   // all other routes fetch data by scraping ncaa.com
   .get(
@@ -450,7 +452,7 @@ export const app = new Elysia()
       cache.set(cacheKey, data);
       return data;
     },
-    { detail: { hide: true } }
+    { detail: { hide: true } },
   )
   .listen(3000);
 
@@ -495,7 +497,7 @@ async function convertToOldFormat(
   newData: any,
   sport: string,
   division: string,
-  date: string
+  date: string,
 ) {
   // Helper function to normalize game state to compatible values
   const normalizeGameState = (gameState: string): string => {
@@ -561,7 +563,7 @@ async function convertToOldFormat(
 
       const matchingOldGame = findMatchingGame(
         homeTeam.nameShort,
-        awayTeam.nameShort
+        awayTeam.nameShort,
       );
 
       // Helper function to format team data
@@ -645,7 +647,7 @@ async function convertToOldFormat(
           contestClock: contest.contestClock || "0:00",
         },
       };
-    })
+    }),
   );
 
   const filteredGames = games.filter(Boolean);
@@ -689,18 +691,18 @@ async function getTodayUrl(sport: string, division: string): Promise<string> {
   try {
     const today = await getScheduleBySportAndDivision(
       sport,
-      division as DivisionKey
+      division as DivisionKey,
     );
     cache_30m.set(cacheKey, today);
     return today;
   } catch (err) {
     log(
-      `Failed to fetch schedule from new endpoint, falling back to old endpoint: ${err}`
+      `Failed to fetch schedule from new endpoint, falling back to old endpoint: ${err}`,
     );
     // Fall through to old endpoint logic
   }
   const req = await fetch(
-    `https://data.ncaa.com/casablanca/schedule/${sport}/${division}/today.json`
+    `https://data.ncaa.com/casablanca/schedule/${sport}/${division}/today.json`,
   );
   if (!req.ok) {
     throw new NotFoundError(JSON.stringify({ message: "Resource not found" }));
@@ -717,8 +719,9 @@ async function getTodayUrl(sport: string, division: string): Promise<string> {
  */
 async function getData(opts: { path: string; page?: string }) {
   // fetch html
-  const url = `https://www.ncaa.com${opts.path}${opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ""
-    }`;
+  const url = `https://www.ncaa.com${opts.path}${
+    opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ""
+  }`;
   log(`Fetching ${url}`);
   const res = await fetch(url);
 
@@ -743,7 +746,7 @@ async function getData(opts: { path: string; page?: string }) {
 
   let title = "";
   const titleEl = document.querySelectorAll(
-    ".stats-header__lower__title, main option[selected], main h1.node__title"
+    ".stats-header__lower__title, main option[selected], main h1.node__title",
   )?.[0];
 
   if (titleEl) {
@@ -757,7 +760,7 @@ async function getData(opts: { path: string; page?: string }) {
   const updated =
     document
       .querySelectorAll(
-        ".stats-header__lower__desc, .rankings-last-updated, .standings-last-updated"
+        ".stats-header__lower__desc, .rankings-last-updated, .standings-last-updated",
       )?.[0]
       ?.textContent?.replace(/Last updated /i, "")
       .trim() ?? "";
@@ -766,7 +769,7 @@ async function getData(opts: { path: string; page?: string }) {
   let page = 1;
   let pages = 1;
   const tablePageLinks = document.querySelectorAll(
-    "ul.stats-pager li:not(.stats-pager__li--prev):not(.stats-pager__li--next)"
+    "ul.stats-pager li:not(.stats-pager__li--prev):not(.stats-pager__li--next)",
   );
   if (tablePageLinks.length > 0) {
     page =
