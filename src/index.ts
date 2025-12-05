@@ -4,7 +4,9 @@ import { Elysia, NotFoundError } from "elysia";
 import ExpiryMap from "expiry-map";
 import { parseHTML } from "linkedom";
 import {
-  customHashesBySeason,
+  playByPlayHashes,
+  boxscoreHashes,
+  teamStatsHashes,
   type DivisionKey,
   doesSupportScoreboardNewApi,
   getDivisionCode,
@@ -147,79 +149,76 @@ export const app = new Elysia()
         },
         { detail: { hide: true } },
       )
-      .get(
-        "/:id/boxscore",
-        async ({ cache, cacheKey, status, params: { id } }) => {
-          // if (seasonIsNewFormat(id)) {
-          const hash =
-            customHashesBySeason[id.slice(0, 3)]?.boxscore ??
-            "babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e";
+      .get("/:id/boxscore", async ({ cache, cacheKey, status, params: { id } }) => {
+        const hashes = [boxscoreHashes.TeamStatsBasketball];
+        for (const hash of hashes) {
+          if (!hash || hashes.length > 2) {
+            continue
+          }
           const req = await fetch(
             `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`,
           );
-          // if (req.ok) {
-          const json = await req.json();
-          if (json?.data?.boxscore) {
-            const data = JSON.stringify(json.data.boxscore);
-            cache.set(cacheKey, data);
-            return data;
+          if (!req.ok) {
+            continue;
           }
-          return status(502, "Error fetching data");
-          // }
-          // }
-          //  this is apparently turned off as of 2025-11-09
-          // const req = await fetch(
-          //   `https://data.ncaa.com/casablanca/game/${id}/boxscore.json`
-          // );
-          // if (!req.ok) {
-          //   return status(404, "Resource not found");
-          // }
-          // const data = JSON.stringify(await req.json());
-          // cache.set(cacheKey, data);
-          // return data;
-        },
+          const json = await req.json();
+
+          // check if team stats data is empty (only has type name property)
+          // if so, use type name as identifier to find correct hash from allHashes
+          const teamStats: undefined | Record<string, any> =
+            json?.data?.boxscore?.teamBoxscore?.at(0)?.teamStats;
+          if (Object.keys(teamStats ?? {}).length < 2) {
+            const typeName = teamStats?.__typename as string | undefined;
+            if (typeName && typeName in playByPlayHashes) {
+              hashes.push(playByPlayHashes[typeName as keyof typeof playByPlayHashes]);
+            }
+            continue;
+          }
+          const data = JSON.stringify(json.data.boxscore);
+          cache.set(cacheKey, data);
+          return data;
+        }
+        return status(502, "Error fetching data");
+      },
         { detail: { hide: true } },
       )
-      .get(
-        "/:id/play-by-play",
-        async ({ cache, cacheKey, status, params: { id } }) => {
-          // if (seasonIsNewFormat(id)) {
-          const hash =
-            customHashesBySeason[id.slice(0, 3)]?.playbyplay ??
-            "47928f2cabc7a164f0de0ed535a623bdf5a852cce7c30d6a6972a38609ba46a2";
-          const req = await fetch(
-            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`,
-          );
-          if (req.ok) {
-            const json = await req.json();
-            if (json?.data?.playbyplay) {
-              const data = JSON.stringify(json.data.playbyplay);
-              cache.set(cacheKey, data);
-              return data;
-            }
+      .get("/:id/play-by-play", async ({ cache, cacheKey, status, params: { id } }) => {
+        const hashes = [playByPlayHashes.PlayByPlayGenericSport];
+        for (const hash of hashes) {
+          if (!hash || hashes.length > 2) {
+            continue
           }
-          return status(502, "Error fetching data");
-          // }
-          //  this is apparently turned off as of 2025-11-09
-          // const req = await fetch(
-          //   `https://data.ncaa.com/casablanca/game/${id}/pbp.json`
-          // );
-          // if (!req.ok) {
-          //   return status(404, "Resource not found");
-          // }
-          // const data = JSON.stringify(await req.json());
-          // cache.set(cacheKey, data);
-          // return data;
-        },
-        { detail: { hide: true } },
+          const req = await fetch(
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+          );
+          if (!req.ok) {
+            continue;
+          }
+          const json = await req.json();
+
+          // check if pbp data is empty (only has type name property)
+          // if so, use type name as identifier to find correct hash from allHashes
+          const pbpStat: undefined | Record<string, any> =
+            json?.data?.playbyplay?.periods?.at(0)?.playbyplayStats?.at(0);
+          if (Object.keys(pbpStat ?? {}).length < 2) {
+            const typeName = pbpStat?.__typename as string | undefined;
+            if (typeName && typeName in playByPlayHashes) {
+              hashes.push(playByPlayHashes[typeName as keyof typeof playByPlayHashes]);
+            }
+            continue;
+          }
+          const data = JSON.stringify(json.data.playbyplay);
+          cache.set(cacheKey, data);
+          return data;
+        }
+        return status(502, "Error fetching data");
+      },
+        { detail: { hide: true } }
       )
       .get(
         "/:id/scoring-summary",
         async ({ cache, cacheKey, status, params: { id } }) => {
-          // if (seasonIsNewFormat(id)) {
-          const hash =
-            customHashesBySeason[id.slice(0, 3)]?.scoringSummary ??
-            "7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198";
+          const hash = "7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198";
           const req = await fetch(
             `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`,
           );
@@ -232,51 +231,41 @@ export const app = new Elysia()
             }
           }
           return status(502, "Error fetching data");
-          // }
-          //  this is apparently turned off as of 2025-11-09
-          // const req = await fetch(
-          //   `https://data.ncaa.com/casablanca/game/${id}/scoringSummary.json`
-          // );
-          // if (!req.ok) {
-          //   return status(404, "Resource not found");
-          // }
-          // const data = JSON.stringify(await req.json());
-          // cache.set(cacheKey, data);
-          // return data;
         },
         { detail: { hide: true } },
       )
-      .get(
-        "/:id/team-stats",
-        async ({ cache, cacheKey, status, params: { id } }) => {
-          // if (seasonIsNewFormat(id)) {
-          const hash =
-            customHashesBySeason[id.slice(0, 3)]?.teamStats ??
-            "b41348ee662d9236483167395b16bb6ab36b12e2908ef6cd767685ea8a2f59bd";
-          const req = await fetch(
-            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`,
-          );
-          if (req.ok) {
-            const json = await req.json();
-            if (json?.data?.boxscore) {
-              const data = JSON.stringify(json.data.boxscore);
-              cache.set(cacheKey, data);
-              return data;
-            }
+      .get("/:id/team-stats", async ({ cache, cacheKey, status, params: { id } }) => {
+        const hashes = [teamStatsHashes.TeamStatsBasketball];
+        for (const hash of hashes) {
+          if (!hash || hashes.length > 2) {
+            continue
           }
-          // }
-          // this is apparently turned off as of 2025-11-09
-          // const req = await fetch(
-          //   `https://data.ncaa.com/casablanca/game/${id}/teamStats.json`
-          // );
-          // if (!req.ok) {
-          //   return status(404, "Resource not found");
-          // }
-          // const data = JSON.stringify(await req.json());
-          // cache.set(cacheKey, data);
-          // return data;
-        },
-        { detail: { hide: true } },
+          const req = await fetch(
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+          );
+          if (!req.ok) {
+            continue;
+          }
+          const json = await req.json();
+
+          // check if team stats data is empty (only has type name property)
+          // if so, use type name as identifier to find correct hash from allHashes
+          const teamStats: undefined | Record<string, any> =
+            json?.data?.boxscore?.teamBoxscore?.at(0)?.teamStats;
+          if (Object.keys(teamStats ?? {}).length < 2) {
+            const typeName = teamStats?.__typename as string | undefined;
+            if (typeName && typeName in teamStatsHashes) {
+              hashes.push(teamStatsHashes[typeName as keyof typeof teamStatsHashes]);
+            }
+            continue;
+          }
+          const data = JSON.stringify(json.data.boxscore);
+          cache.set(cacheKey, data);
+          return data;
+        }
+        return status(502, "Error fetching data");
+      },
+        { detail: { hide: true } }
       ),
   )
   // schedule route to retrieve game dates
@@ -719,9 +708,8 @@ async function getTodayUrl(sport: string, division: string): Promise<string> {
  */
 async function getData(opts: { path: string; page?: string }) {
   // fetch html
-  const url = `https://www.ncaa.com${opts.path}${
-    opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ""
-  }`;
+  const url = `https://www.ncaa.com${opts.path}${opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ""
+    }`;
   log(`Fetching ${url}`);
   const res = await fetch(url);
 
