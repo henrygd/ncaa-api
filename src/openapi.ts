@@ -83,7 +83,7 @@ export const openapiSpec = openapi({
             {
               name: "id",
               in: "path",
-              schema: { type: "string" },
+              schema: { type: "number" },
               required: true,
               examples: makeExamples(["6459218", "6305900"]),
             },
@@ -99,7 +99,7 @@ export const openapiSpec = openapi({
             {
               name: "id",
               in: "path",
-              schema: { type: "string" },
+              schema: { type: "number" },
               required: true,
               examples: makeExamples(["6459218", "6305900"]),
             },
@@ -115,7 +115,7 @@ export const openapiSpec = openapi({
             {
               name: "id",
               in: "path",
-              schema: { type: "string" },
+              schema: { type: "number" },
               required: true,
               examples: makeExamples(["6459218", "6305900"]),
             },
@@ -132,7 +132,7 @@ export const openapiSpec = openapi({
           {
             name: "id",
             in: "path",
-            schema: { type: "string" },
+            schema: { type: "number" },
             required: true,
             examples: makeExamples(["6459218", "6305900"]),
           },
@@ -148,7 +148,7 @@ export const openapiSpec = openapi({
           {
             name: "id",
             in: "path",
-            schema: { type: "string" },
+            schema: { type: "number" },
             required: true,
             examples: makeExamples(["6459218", "6305900"]),
           },

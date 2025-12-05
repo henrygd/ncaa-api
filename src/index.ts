@@ -1,6 +1,6 @@
 import { getSemaphore } from "@henrygd/semaphore";
 import { createHash } from "crypto";
-import { Elysia, NotFoundError } from "elysia";
+import { Elysia, NotFoundError, t } from "elysia";
 import ExpiryMap from "expiry-map";
 import { parseHTML } from "linkedom";
 import {
@@ -147,7 +147,12 @@ export const app = new Elysia()
           cache.set(cacheKey, data);
           return data;
         },
-        { detail: { hide: true } },
+        {
+          detail: { hide: true },
+          params: t.Object({
+            id: t.Number({ minimum: 999999, maximum: 99999999 })
+          })
+        }
       )
       .get("/:id/boxscore", async ({ cache, cacheKey, status, params: { id } }) => {
         const hashes = [boxscoreHashes.TeamStatsBasketball];
@@ -169,8 +174,8 @@ export const app = new Elysia()
             json?.data?.boxscore?.teamBoxscore?.at(0)?.teamStats;
           if (Object.keys(teamStats ?? {}).length < 2) {
             const typeName = teamStats?.__typename as string | undefined;
-            if (typeName && typeName in playByPlayHashes) {
-              hashes.push(playByPlayHashes[typeName as keyof typeof playByPlayHashes]);
+            if (typeName && typeName in boxscoreHashes) {
+              hashes.push(boxscoreHashes[typeName as keyof typeof boxscoreHashes]);
             }
             continue;
           }
@@ -180,7 +185,12 @@ export const app = new Elysia()
         }
         return status(502, "Error fetching data");
       },
-        { detail: { hide: true } },
+        {
+          detail: { hide: true },
+          params: t.Object({
+            id: t.Number({ minimum: 999999, maximum: 99999999 })
+          })
+        }
       )
       .get("/:id/play-by-play", async ({ cache, cacheKey, status, params: { id } }) => {
         const hashes = [playByPlayHashes.PlayByPlayGenericSport];
@@ -213,7 +223,12 @@ export const app = new Elysia()
         }
         return status(502, "Error fetching data");
       },
-        { detail: { hide: true } }
+        {
+          detail: { hide: true },
+          params: t.Object({
+            id: t.Number({ minimum: 999999, maximum: 99999999 })
+          })
+        }
       )
       .get(
         "/:id/scoring-summary",
@@ -232,7 +247,12 @@ export const app = new Elysia()
           }
           return status(502, "Error fetching data");
         },
-        { detail: { hide: true } },
+        {
+          detail: { hide: true },
+          params: t.Object({
+            id: t.Number({ minimum: 999999, maximum: 99999999 })
+          })
+        },
       )
       .get("/:id/team-stats", async ({ cache, cacheKey, status, params: { id } }) => {
         const hashes = [teamStatsHashes.TeamStatsBasketball];
@@ -265,7 +285,12 @@ export const app = new Elysia()
         }
         return status(502, "Error fetching data");
       },
-        { detail: { hide: true } }
+        {
+          detail: { hide: true },
+          params: t.Object({
+            id: t.Number({ minimum: 999999, maximum: 99999999 })
+          })
+        }
       ),
   )
   // schedule route to retrieve game dates
