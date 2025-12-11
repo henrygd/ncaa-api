@@ -49,6 +49,7 @@ export const openapiSpec = openapi({
     paths: {
       "/scoreboard/{sport}/{path}": {
         get: {
+          responses: {},
           summary: "Scoreboard",
           description:
             "Scores for a given sport and division. Most sports use `YYYY/MM/DD`, but football uses `YYYY/WK`.\n\nOmitting the date will return scores for today or the previous game date.\n\nhttps://www.ncaa.com/scoreboard/football/fbs\n\nhttps://www.ncaa.com/scoreboard/football/fbs/2025/01/all-conf",
@@ -65,20 +66,16 @@ export const openapiSpec = openapi({
               in: "path",
               schema: { type: "string" },
               required: true,
-              examples: makeExamples([
-                "fbs",
-                "fbs/2025/01/all-conf",
-                "d1/2024/01/all-conf",
-              ]),
+              examples: makeExamples(["fbs", "fbs/2025/01/all-conf", "d1/2024/01/all-conf"]),
             },
           ],
         },
       },
       "/game/{id}": {
         get: {
+          responses: {},
           summary: "Game information",
-          description:
-            "General information about a game.\n\nhttps://www.ncaa.com/game/6459218",
+          description: "General information about a game.\n\nhttps://www.ncaa.com/game/6459218",
           parameters: [
             {
               name: "id",
@@ -92,6 +89,7 @@ export const openapiSpec = openapi({
       },
       "/game/{id}/boxscore": {
         get: {
+          responses: {},
           summary: "Game boxscore",
           description:
             "Due to upstream changes, some seasons may not return data for game subroutes. Please open an issue if you encounter this.",
@@ -108,6 +106,7 @@ export const openapiSpec = openapi({
       },
       "/game/{id}/play-by-play": {
         get: {
+          responses: {},
           summary: "Game play by play",
           description:
             "Due to upstream changes, some seasons may not return data for game subroutes. Please open an issue if you encounter this.",
@@ -124,6 +123,7 @@ export const openapiSpec = openapi({
       },
       "/game/{id}/scoring-summary": {
         get: {
+          responses: {},
           summary: "Game scoring summary",
           description:
             "Due to upstream changes, some seasons may not return data for game subroutes. Please open an issue if you encounter this.",
@@ -140,6 +140,7 @@ export const openapiSpec = openapi({
       },
       "/game/{id}/team-stats": {
         get: {
+          responses: {},
           summary: "Game team stats",
           description:
             "Due to upstream changes, some seasons may not return data for game subroutes. Please open an issue if you encounter this.",
@@ -156,6 +157,7 @@ export const openapiSpec = openapi({
       },
       "/stats/{sport}/{division}/{year}/{path}": {
         get: {
+          responses: {},
           summary: "Stats",
           description:
             "Stats for a given sport and division.\n\nhttps://www.ncaa.com/stats/football/fbs/current/individual/20\n\nhttps://www.ncaa.com/stats/football/fbs/2024/team/28",
@@ -193,6 +195,7 @@ export const openapiSpec = openapi({
       },
       "/standings/{sport}/{path}": {
         get: {
+          responses: {},
           summary: "Standings",
           description:
             "Standings for a given sport and division.\n\nhttps://www.ncaa.com/standings/football/fbs\n\nhttps://www.ncaa.com/standings/basketball-women/d1/asun",
@@ -216,6 +219,7 @@ export const openapiSpec = openapi({
       },
       "/history/{path}": {
         get: {
+          responses: {},
           summary: "History",
           description:
             "Championship history for a given sport.\n\nhttps://www.ncaa.com/history/bowling/nc",
@@ -232,6 +236,7 @@ export const openapiSpec = openapi({
       },
       "/rankings/{path}": {
         get: {
+          responses: {},
           summary: "Rankings",
           description:
             "Rankings for a given sport.\n\nhttps://www.ncaa.com/rankings/football/fbs/associated-press",
@@ -252,6 +257,7 @@ export const openapiSpec = openapi({
       },
       "/news/{sport}/{division}": {
         get: {
+          responses: {},
           summary: "News",
           description:
             "News articles and videos for a given sport and division. Returns parsed RSS feed data in JSON format.\n\nhttps://www.ncaa.com/news/basketball-men/d1/rss.xml",
@@ -280,6 +286,7 @@ export const openapiSpec = openapi({
       },
       "/schedule/{sport}/{division}/{path}": {
         get: {
+          responses: {},
           summary: "Schedule",
           description:
             "Game dates for a given sport and division. Most sports use `YYYY/MM`, but football uses `YYYY`.",
@@ -310,6 +317,7 @@ export const openapiSpec = openapi({
       },
       "/schedule-alt/{sport}/{division}/{year}": {
         get: {
+          responses: {},
           summary: "Schedule (alt)",
           description: "Game dates for a given sport and division and year",
         },
@@ -339,6 +347,7 @@ export const openapiSpec = openapi({
       },
       "/schools-index": {
         get: {
+          responses: {},
           summary: "Schools index",
           description:
             "Returns a list of all schools with slug, name, and long name.\n\nhttps://www.ncaa.com/schools-index",
@@ -346,6 +355,7 @@ export const openapiSpec = openapi({
       },
       "/logo/{school}.svg": {
         get: {
+          responses: {},
           summary: "Logos",
           description: "Logos for all NCAA schools. Use the school `slug` or `team_seo` property.",
         },
@@ -363,8 +373,9 @@ export const openapiSpec = openapi({
             schema: { type: "boolean" },
             required: false,
             examples: makeExamples(["false", "true"]),
-            description: "Set to `true` to get a version of the logo that works better on dark backgrounds.",
-          }
+            description:
+              "Set to `true` to get a version of the logo that works better on dark backgrounds.",
+          },
         ],
       },
     },

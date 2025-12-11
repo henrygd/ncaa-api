@@ -3,7 +3,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun --watch src/index.ts",
-    "start": "NODE_ENV=production bun src/index.ts"
+    "start": "NODE_ENV=production bun src/index.ts",
+    "lint": "biome check --write src"
   },
   "dependencies": {
     "@elysiajs/openapi": "^1.4.11",

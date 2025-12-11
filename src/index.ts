@@ -42,9 +42,7 @@ const validRoutes = new Map([
 
 /** log message to console with timestamp */
 function log(str: string) {
-  console.log(
-    `[${new Date().toISOString().substring(0, 19).replace("T", " ")}] ${str}`
-  );
+  console.log(`[${new Date().toISOString().substring(0, 19).replace("T", " ")}] ${str}`);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -59,26 +57,24 @@ export const app = new Elysia()
   // redirect index to github page
   .get("/", ({ redirect }) => redirect("/openapi"), { detail: { hide: true } })
   // fetch and return logo svg
-  .get(
-    "/logo/:school",
-    async ({ params: { school }, query: { dark }, set, status }) => {
-      const bgParam = dark !== undefined && dark !== "false" ? "bgd" : "bgl";
-      const url = `https://www.ncaa.com/sites/default/files/images/logos/schools/${bgParam}/${school.replace(".svg", "")}.svg`;
-      const res = await fetch(url);
+  .get("/logo/:school", async ({ params: { school }, query: { dark }, set, status }) => {
+    const bgParam = dark !== undefined && dark !== "false" ? "bgd" : "bgl";
+    const url = `https://www.ncaa.com/sites/default/files/images/logos/schools/${bgParam}/${school.replace(".svg", "")}.svg`;
+    const res = await fetch(url);
 
-      if (!res.ok) {
-        return status(404, "Logo not found");
-      }
+    if (!res.ok) {
+      return status(404, "Logo not found");
+    }
 
-      try {
-        const svgContent = await res.text();
-        set.headers["Content-Type"] = "image/svg+xml";
-        set.headers["Cache-Control"] = "public, max-age=604800";
-        return svgContent;
-      } catch (_) {
-        return status(500, "Error fetching data");
-      }
-    },
+    try {
+      const svgContent = await res.text();
+      set.headers["Content-Type"] = "image/svg+xml";
+      set.headers["Cache-Control"] = "public, max-age=604800";
+      return svgContent;
+    } catch (_) {
+      return status(500, "Error fetching data");
+    }
+  },
     { detail: { hide: true } }
   )
   // validate request / set cache key
@@ -107,131 +103,120 @@ export const app = new Elysia()
   })
   .onBeforeHandle(({ set, cache, cacheKey }) => {
     set.headers["Content-Type"] = "application/json";
-    set.headers["Cache-Control"] =
-      `public, max-age=${cache === cache_45s ? 60 : 1800}`;
+    set.headers["Cache-Control"] = `public, max-age=${cache === cache_45s ? 60 : 1800}`;
     if (cache.has(cacheKey)) {
       return cache.get(cacheKey);
     }
   })
   // schools-index route to return list of all schools
-  .get(
-    "/schools-index",
-    async ({ cache, cacheKey, status }) => {
-      const req = await fetch("https://www.ncaa.com/json/schools");
-      try {
-        const json = (await req.json()).map(
-          (school: Record<string, string>) => ({
-            slug: school.slug,
-            name: school.name?.trim(),
-            long: school.long_name?.trim(),
-          })
-        );
-        const data = JSON.stringify(json);
-        cache.set(cacheKey, data);
-        return data;
-      } catch (_) {
-        return status(500, "Error fetching data");
-      }
-    },
+  .get("/schools-index", async ({ cache, cacheKey, status }) => {
+    const req = await fetch("https://www.ncaa.com/json/schools");
+    try {
+      const json = (await req.json()).map((school: Record<string, string>) => ({
+        slug: school.slug,
+        name: school.name?.trim(),
+        long: school.long_name?.trim(),
+      }));
+      const data = JSON.stringify(json);
+      cache.set(cacheKey, data);
+      return data;
+    } catch (_) {
+      return status(500, "Error fetching data");
+    }
+  },
     { detail: { hide: true } }
   )
   // news route to fetch and parse RSS feed
-  .get(
-    "/news/:sport/:division",
-    async ({ params, cache, cacheKey, status }) => {
-      if (cache.has(cacheKey)) {
-        return cache.get(cacheKey);
-      }
+  .get("/news/:sport/:division", async ({ params, cache, cacheKey, status }) => {
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
 
-      const url = `https://www.ncaa.com/news/${params.sport}/${params.division}/rss.xml`;
-      const res = await fetch(url);
+    const url = `https://www.ncaa.com/news/${params.sport}/${params.division}/rss.xml`;
+    const res = await fetch(url);
 
-      if (!res.ok) {
-        return status(404, "RSS feed not found");
-      }
+    if (!res.ok) {
+      return status(404, "RSS feed not found");
+    }
 
-      try {
-        const xmlContent = await res.text();
-        const { document } = parseHTML(xmlContent);
+    try {
+      const xmlContent = await res.text();
+      const { document } = parseHTML(xmlContent);
 
-        // Get text content, handling CDATA (raw or converted to HTML comments)
-        const getText = (el: Element | null) => {
-          const text = el?.textContent?.trim();
-          if (text) {
-            // Strip raw CDATA wrapper if present
-            const cdataMatch = text.match(/^<!\[CDATA\[([\s\S]*)\]\]>$/);
-            return cdataMatch ? cdataMatch[1].trim() : text;
+      // Get text content, handling CDATA (raw or converted to HTML comments)
+      const getText = (el: Element | null) => {
+        const text = el?.textContent?.trim();
+        if (text) {
+          // Strip raw CDATA wrapper if present
+          const cdataMatch = text.match(/^<!\[CDATA\[([\s\S]*)\]\]>$/);
+          return cdataMatch ? cdataMatch[1].trim() : text;
+        }
+        // linkedom converts CDATA to comments when it contains HTML, extract from innerHTML
+        const html = el?.innerHTML ?? "";
+        const match = html.match(/^<!--\[CDATA\[([\s\S]*)\]\]-->$/);
+        return match ? match[1].trim() : "";
+      };
+
+      // linkedom treats <link> as void element, URL becomes next sibling text node
+      const getLink = (parent: Element | null) => {
+        const link = parent?.querySelector("link");
+        return link?.nextSibling?.textContent?.trim() ?? "";
+      };
+
+      const channel = document.querySelector("channel");
+
+      const result = {
+        title: getText(channel?.querySelector("title") ?? null),
+        link: getLink(channel),
+        description: getText(channel?.querySelector("description") ?? null),
+        language: getText(channel?.querySelector("language") ?? null),
+        items: [...document.querySelectorAll("item")].map((item) => {
+          let description = getText(item.querySelector("description"));
+          let image = "";
+
+          // Extract image URL from description HTML if present
+          const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
+          if (imgMatch) {
+            image = imgMatch[1];
+            description = description.replace(/<img[^>]*>\s*/i, "").trim();
           }
-          // linkedom converts CDATA to comments when it contains HTML, extract from innerHTML
-          const html = el?.innerHTML ?? "";
-          const match = html.match(/^<!--\[CDATA\[([\s\S]*)\]\]-->$/);
-          return match ? match[1].trim() : "";
-        };
 
-        // linkedom treats <link> as void element, URL becomes next sibling text node
-        const getLink = (parent: Element | null) => {
-          const link = parent?.querySelector("link");
-          return link?.nextSibling?.textContent?.trim() ?? "";
-        };
+          return {
+            title: getText(item.querySelector("title")),
+            link: getLink(item),
+            description,
+            image,
+            pubDate: getText(item.querySelector("pubDate")),
+            creator: getText(item.querySelector("dc\\:creator")),
+            category: getText(item.querySelector("category")),
+            enclosure: getText(item.querySelector("enclosure")),
+          };
+        }),
+      };
 
-        const channel = document.querySelector("channel");
-
-        const result = {
-          title: getText(channel?.querySelector("title") ?? null),
-          link: getLink(channel),
-          description: getText(channel?.querySelector("description") ?? null),
-          language: getText(channel?.querySelector("language") ?? null),
-          items: [...document.querySelectorAll("item")].map((item) => {
-            let description = getText(item.querySelector("description"));
-            let image = "";
-
-            // Extract image URL from description HTML if present
-            const imgMatch = description.match(
-              /<img[^>]+src=["']([^"']+)["']/i
-            );
-            if (imgMatch) {
-              image = imgMatch[1];
-              description = description.replace(/<img[^>]*>\s*/i, "").trim();
-            }
-
-            return {
-              title: getText(item.querySelector("title")),
-              link: getLink(item),
-              description,
-              image,
-              pubDate: getText(item.querySelector("pubDate")),
-              creator: getText(item.querySelector("dc\\:creator")),
-              category: getText(item.querySelector("category")),
-              enclosure: getText(item.querySelector("enclosure")),
-            };
-          }),
-        };
-
-        const data = JSON.stringify(result);
-        cache.set(cacheKey, data);
-        return data;
-      } catch (_) {
-        return status(500, "Error parsing RSS feed");
-      }
-    },
+      const data = JSON.stringify(result);
+      cache.set(cacheKey, data);
+      return data;
+    } catch (_) {
+      return status(500, "Error parsing RSS feed");
+    }
+  },
     { detail: { hide: true } }
   )
   .group("/game", (app) =>
     app
       // game route to retrieve game details
-      .get(
-        "/:id",
-        async ({ cache, cacheKey, status, params: { id } }) => {
-          const req = await fetch(
-            `https://sdataprod.ncaa.com/?meta=GetGamecenterGameById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2293a02c7193c89d85bcdda8c1784925d9b64657f73ef584382e2297af555acd4b%22}}&variables={%22id%22:%22${id}%22,%22week%22:null,%22staticTestEnv%22:null}`
-          );
-          if (!req.ok) {
-            return status(404, "Resource not found");
-          }
-          const data = JSON.stringify((await req.json())?.data);
-          cache.set(cacheKey, data);
-          return data;
-        },
+      .get("/:id", async ({ cache, cacheKey, status, params: { id } }) => {
+        const req = await fetch(
+          `https://sdataprod.ncaa.com/?meta=GetGamecenterGameById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2293a02c7193c89d85bcdda8c1784925d9b64657f73ef584382e2297af555acd4b%22}}&variables={%22id%22:%22${id}%22,%22week%22:null,%22staticTestEnv%22:null}`
+        );
+        if (!req.ok) {
+          return status(404, "Resource not found");
+        }
+        const data = JSON.stringify((await req.json())?.data);
+        cache.set(cacheKey, data);
+        return data;
+      },
         {
           detail: { hide: true },
           params: t.Object({
@@ -239,108 +224,37 @@ export const app = new Elysia()
           }),
         }
       )
-      .get(
-        "/:id/boxscore",
-        async ({ cache, cacheKey, status, params: { id } }) => {
-          const hashes = [boxscoreHashes.TeamStatsBasketball];
-          for (const hash of hashes) {
-            if (!hash || hashes.length > 2) {
-              continue;
-            }
-            const req = await fetch(
-              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
-            );
-            if (!req.ok) {
-              continue;
-            }
-            const json = await req.json();
-
-            // check if team stats data is empty (only has type name property)
-            // if so, use type name as identifier to find correct hash from allHashes
-            const teamStats: undefined | Record<string, unknown> =
-              json?.data?.boxscore?.teamBoxscore?.at(0)?.teamStats;
-            if (Object.keys(teamStats ?? {}).length < 2) {
-              const typeName = teamStats?.__typename as string | undefined;
-              if (typeName && typeName in boxscoreHashes) {
-                hashes.push(
-                  boxscoreHashes[typeName as keyof typeof boxscoreHashes]
-                );
-              }
-              continue;
-            }
-            const data = JSON.stringify(json.data.boxscore);
-            cache.set(cacheKey, data);
-            return data;
+      .get("/:id/boxscore", async ({ cache, cacheKey, status, params: { id } }) => {
+        const hashes = [boxscoreHashes.TeamStatsBasketball];
+        for (const hash of hashes) {
+          if (!hash || hashes.length > 2) {
+            continue;
           }
-          return status(502, "Error fetching data");
-        },
-        {
-          detail: { hide: true },
-          params: t.Object({
-            id: t.Number({ minimum: 999999, maximum: 99999999 }),
-          }),
-        }
-      )
-      .get(
-        "/:id/play-by-play",
-        async ({ cache, cacheKey, status, params: { id } }) => {
-          const hashes = [playByPlayHashes.PlayByPlayGenericSport];
-          for (const hash of hashes) {
-            if (!hash || hashes.length > 2) {
-              continue;
-            }
-            const req = await fetch(
-              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
-            );
-            if (!req.ok) {
-              continue;
-            }
-            const json = await req.json();
-
-            // check if pbp data is empty (only has type name property)
-            // if so, use type name as identifier to find correct hash from allHashes
-            const pbpStat: undefined | Record<string, unknown> =
-              json?.data?.playbyplay?.periods?.at(0)?.playbyplayStats?.at(0);
-            if (Object.keys(pbpStat ?? {}).length < 2) {
-              const typeName = pbpStat?.__typename as string | undefined;
-              if (typeName && typeName in playByPlayHashes) {
-                hashes.push(
-                  playByPlayHashes[typeName as keyof typeof playByPlayHashes]
-                );
-              }
-              continue;
-            }
-            const data = JSON.stringify(json.data.playbyplay);
-            cache.set(cacheKey, data);
-            return data;
-          }
-          return status(502, "Error fetching data");
-        },
-        {
-          detail: { hide: true },
-          params: t.Object({
-            id: t.Number({ minimum: 999999, maximum: 99999999 }),
-          }),
-        }
-      )
-      .get(
-        "/:id/scoring-summary",
-        async ({ cache, cacheKey, status, params: { id } }) => {
-          const hash =
-            "7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198";
           const req = await fetch(
             `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
           );
-          if (req.ok) {
-            const json = await req.json();
-            if (json?.data?.scoringSummary) {
-              const data = JSON.stringify(json.data.scoringSummary);
-              cache.set(cacheKey, data);
-              return data;
-            }
+          if (!req.ok) {
+            continue;
           }
-          return status(502, "Error fetching data");
-        },
+          const json = await req.json();
+
+          // check if team stats data is empty (only has type name property)
+          // if so, use type name as identifier to find correct hash from allHashes
+          const teamStats: undefined | Record<string, unknown> =
+            json?.data?.boxscore?.teamBoxscore?.at(0)?.teamStats;
+          if (Object.keys(teamStats ?? {}).length < 2) {
+            const typeName = teamStats?.__typename as string | undefined;
+            if (typeName && typeName in boxscoreHashes) {
+              hashes.push(boxscoreHashes[typeName as keyof typeof boxscoreHashes]);
+            }
+            continue;
+          }
+          const data = JSON.stringify(json.data.boxscore);
+          cache.set(cacheKey, data);
+          return data;
+        }
+        return status(502, "Error fetching data");
+      },
         {
           detail: { hide: true },
           params: t.Object({
@@ -348,41 +262,98 @@ export const app = new Elysia()
           }),
         }
       )
-      .get(
-        "/:id/team-stats",
-        async ({ cache, cacheKey, status, params: { id } }) => {
-          const hashes = [teamStatsHashes.TeamStatsBasketball];
-          for (const hash of hashes) {
-            if (!hash || hashes.length > 2) {
-              continue;
-            }
-            const req = await fetch(
-              `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
-            );
-            if (!req.ok) {
-              continue;
-            }
-            const json = await req.json();
+      .get("/:id/play-by-play", async ({ cache, cacheKey, status, params: { id } }) => {
+        const hashes = [playByPlayHashes.PlayByPlayGenericSport];
+        for (const hash of hashes) {
+          if (!hash || hashes.length > 2) {
+            continue;
+          }
+          const req = await fetch(
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+          );
+          if (!req.ok) {
+            continue;
+          }
+          const json = await req.json();
 
-            // check if team stats data is empty (only has type name property)
-            // if so, use type name as identifier to find correct hash from allHashes
-            const teamStats: undefined | Record<string, unknown> =
-              json?.data?.boxscore?.teamBoxscore?.at(0)?.teamStats;
-            if (Object.keys(teamStats ?? {}).length < 2) {
-              const typeName = teamStats?.__typename as string | undefined;
-              if (typeName && typeName in teamStatsHashes) {
-                hashes.push(
-                  teamStatsHashes[typeName as keyof typeof teamStatsHashes]
-                );
-              }
-              continue;
+          // check if pbp data is empty (only has type name property)
+          // if so, use type name as identifier to find correct hash from allHashes
+          const pbpStat: undefined | Record<string, unknown> = json?.data?.playbyplay?.periods
+            ?.at(0)
+            ?.playbyplayStats?.at(0);
+          if (Object.keys(pbpStat ?? {}).length < 2) {
+            const typeName = pbpStat?.__typename as string | undefined;
+            if (typeName && typeName in playByPlayHashes) {
+              hashes.push(playByPlayHashes[typeName as keyof typeof playByPlayHashes]);
             }
-            const data = JSON.stringify(json.data.boxscore);
+            continue;
+          }
+          const data = JSON.stringify(json.data.playbyplay);
+          cache.set(cacheKey, data);
+          return data;
+        }
+        return status(502, "Error fetching data");
+      },
+        {
+          detail: { hide: true },
+          params: t.Object({
+            id: t.Number({ minimum: 999999, maximum: 99999999 }),
+          }),
+        }
+      )
+      .get("/:id/scoring-summary", async ({ cache, cacheKey, status, params: { id } }) => {
+        const hash = "7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198";
+        const req = await fetch(
+          `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+        );
+        if (req.ok) {
+          const json = await req.json();
+          if (json?.data?.scoringSummary) {
+            const data = JSON.stringify(json.data.scoringSummary);
             cache.set(cacheKey, data);
             return data;
           }
-          return status(502, "Error fetching data");
-        },
+        }
+        return status(502, "Error fetching data");
+      },
+        {
+          detail: { hide: true },
+          params: t.Object({
+            id: t.Number({ minimum: 999999, maximum: 99999999 }),
+          }),
+        }
+      )
+      .get("/:id/team-stats", async ({ cache, cacheKey, status, params: { id } }) => {
+        const hashes = [teamStatsHashes.TeamStatsBasketball];
+        for (const hash of hashes) {
+          if (!hash || hashes.length > 2) {
+            continue;
+          }
+          const req = await fetch(
+            `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}&variables={"contestId":"${id}","staticTestEnv":null}`
+          );
+          if (!req.ok) {
+            continue;
+          }
+          const json = await req.json();
+
+          // check if team stats data is empty (only has type name property)
+          // if so, use type name as identifier to find correct hash from allHashes
+          const teamStats: undefined | Record<string, unknown> =
+            json?.data?.boxscore?.teamBoxscore?.at(0)?.teamStats;
+          if (Object.keys(teamStats ?? {}).length < 2) {
+            const typeName = teamStats?.__typename as string | undefined;
+            if (typeName && typeName in teamStatsHashes) {
+              hashes.push(teamStatsHashes[typeName as keyof typeof teamStatsHashes]);
+            }
+            continue;
+          }
+          const data = JSON.stringify(json.data.boxscore);
+          cache.set(cacheKey, data);
+          return data;
+        }
+        return status(502, "Error fetching data");
+      },
         {
           detail: { hide: true },
           params: t.Object({
@@ -392,185 +363,174 @@ export const app = new Elysia()
       )
   )
   // schedule route to retrieve game dates
-  .get(
-    "/schedule/:sport/:division/*",
-    async ({ cache, cacheKey, params, status }) => {
-      const req = await fetch(
-        `https://data.ncaa.com/casablanca/schedule/${params.sport}/${params.division}/${params["*"]}/schedule-all-conf.json`
-      );
+  .get("/schedule/:sport/:division/*", async ({ cache, cacheKey, params, status }) => {
+    const req = await fetch(
+      `https://data.ncaa.com/casablanca/schedule/${params.sport}/${params.division}/${params["*"]}/schedule-all-conf.json`
+    );
 
-      if (!req.ok) {
-        return status(404, "Resource not found");
-      }
+    if (!req.ok) {
+      return status(404, "Resource not found");
+    }
 
-      const data = JSON.stringify(await req.json());
-      cache.set(cacheKey, data);
-      return data;
-    },
+    const data = JSON.stringify(await req.json());
+    cache.set(cacheKey, data);
+    return data;
+  },
     { detail: { hide: true } }
   )
-  .get(
-    "/schedule-alt/:sport/:division/:year",
-    async ({ cache, cacheKey, params, status }) => {
-      const sportCode =
-        newCodesBySport[params.sport as keyof typeof newCodesBySport].code;
-      if (!sportCode) {
-        return status(400, "Invalid sport");
-      }
-      const divisionCode = getDivisionCode(params.sport, params.division);
-      if (!divisionCode) {
-        return status(400, "Invalid division");
-      }
-      const url = `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"a25ad021179ce1d97fb951a49954dc98da150089f9766e7e85890e439516ffbf"}}&queryName=NCAA_schedules_today_web&variables={"sportCode":"${sportCode}","division":${divisionCode},"seasonYear":${params.year}}`;
-      const req = await fetch(url);
+  .get("/schedule-alt/:sport/:division/:year", async ({ cache, cacheKey, params, status }) => {
+    const sportCode = newCodesBySport[params.sport as keyof typeof newCodesBySport].code;
+    if (!sportCode) {
+      return status(400, "Invalid sport");
+    }
+    const divisionCode = getDivisionCode(params.sport, params.division);
+    if (!divisionCode) {
+      return status(400, "Invalid division");
+    }
+    const url = `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"a25ad021179ce1d97fb951a49954dc98da150089f9766e7e85890e439516ffbf"}}&queryName=NCAA_schedules_today_web&variables={"sportCode":"${sportCode}","division":${divisionCode},"seasonYear":${params.year}}`;
+    const req = await fetch(url);
 
-      if (!req.ok) {
-        return status(404, "Resource not found");
-      }
+    if (!req.ok) {
+      return status(404, "Resource not found");
+    }
 
-      const data = JSON.stringify(await req.json());
-      cache.set(cacheKey, data);
-      return data;
-    },
+    const data = JSON.stringify(await req.json());
+    cache.set(cacheKey, data);
+    return data;
+  },
     { detail: { hide: true } }
   )
   // scoreboard route to fetch data from data.ncaa.com json endpoint
-  .get(
-    "/scoreboard/:sport/*",
-    async ({ cache, cacheKey, params, set, status }) => {
-      const semCacheKey = getSemaphore(cacheKey);
-      await semCacheKey.acquire();
-      try {
-        if (cache.has(cacheKey)) {
-          set.headers["x-score-cache"] = "hit";
-          return cache.get(cacheKey);
-        }
-
-        // Parse URL path to extract year and week parameters
-        const [division, year] = params["*"].split("/");
-
-        // find date in url
-        const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/;
-        let urlDate = params["*"].match(urlDateMatcher)?.[0];
-
-        if (urlDate) {
-          // return 400 if date is more than a year in the future
-          // (had runaway bot requesting every day until I noticed it in 2195)
-          if (new Date(urlDate).getFullYear() > new Date().getFullYear() + 1) {
-            return status(400, "Invalid date");
-          }
-        } else {
-          // if date not in passed in url, fetch date from today.json
-          urlDate = await getTodayUrl(params.sport, division);
-        }
-
-        const scoreboardDate = new Date(urlDate);
-
-        // Use the year from URL
-        const effectiveYear = parseInt(year, 10) || new Date().getFullYear();
-
-        // Check if we should use new endpoint
-        const supportsNewApi = doesSupportScoreboardNewApi(
-          params.sport,
-          effectiveYear,
-          scoreboardDate.getMonth()
-        );
-
-        if (supportsNewApi && params.sport in newCodesBySport) {
-          try {
-            const sportCode = newCodesBySport[params.sport].code;
-            // Check week-based cache first for shared caching
-            const weekCacheKey = `${sportCode}_${division}_${urlDate}`;
-            if (cache.has(weekCacheKey)) {
-              set.headers["x-score-cache"] = "hit";
-              return cache.get(weekCacheKey);
-            }
-
-            const divisionCode = getDivisionCode(params.sport, division);
-
-            const newParams: NewScoreboardParams = {
-              sportCode,
-              division: divisionCode,
-              seasonYear: effectiveYear,
-            };
-
-            const weekCode = urlDate.split("/")[1] ?? "1";
-            const isFootball = sportCode === "MFB";
-            const isPlayoff = isFootball && weekCode === "P";
-
-            if (isFootball && !isPlayoff) {
-              newParams.week = parseInt(weekCode, 10);
-            } else if (!isPlayoff) {
-              newParams.contestDate = urlDate;
-            }
-
-            // Fetch playoff weeks combined or single week/date
-            const newData = isPlayoff
-              ? await fetchPlayoffScoreboard(newParams)
-              : await fetchGqlScoreboard(newParams);
-            const convertedData = await convertToOldFormat(
-              newData,
-              params.sport,
-              division,
-              urlDate
-            );
-            const data = JSON.stringify(convertedData);
-
-            // Use week-based cache key for shared caching across different URL formats
-            cache.set(weekCacheKey, data);
-
-            // Also cache under the original cache key for consistency
-            cache.set(cacheKey, data);
-            return data;
-          } catch (err) {
-            log(
-              `Failed to fetch from new endpoint, falling back to old endpoint: ${err}`
-            );
-            // Fall through to old endpoint logic
-          }
-        }
-
-        // Use old endpoint logic
-        const url = `https://data.ncaa.com/casablanca/scoreboard/${params.sport}/${division}/${urlDate}/scoreboard.json`;
-
-        const semUrl = getSemaphore(url);
-        await semUrl.acquire();
-        try {
-          // check cache
-          if (cache.has(url)) {
-            set.headers["x-score-cache"] = "hit";
-            return cache.get(url);
-          }
-          // fetch data
-          const res = await fetch(url);
-          if (!res.ok) {
-            return status(404, "Resource not found");
-          }
-          const data = JSON.stringify(await res.json());
-          cache.set(cacheKey, data);
-          cache.set(url, data);
-          return data;
-        } finally {
-          semUrl.release();
-        }
-      } finally {
-        semCacheKey.release();
+  .get("/scoreboard/:sport/*", async ({ cache, cacheKey, params, set, status }) => {
+    const semCacheKey = getSemaphore(cacheKey);
+    await semCacheKey.acquire();
+    try {
+      if (cache.has(cacheKey)) {
+        set.headers["x-score-cache"] = "hit";
+        return cache.get(cacheKey);
       }
-    },
+
+      // Parse URL path to extract year and week parameters
+      const [division, year] = params["*"].split("/");
+
+      // find date in url
+      const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/;
+      let urlDate = params["*"].match(urlDateMatcher)?.[0];
+
+      if (urlDate) {
+        // return 400 if date is more than a year in the future
+        // (had runaway bot requesting every day until I noticed it in 2195)
+        if (new Date(urlDate).getFullYear() > new Date().getFullYear() + 1) {
+          return status(400, "Invalid date");
+        }
+      } else {
+        // if date not in passed in url, fetch date from today.json
+        urlDate = await getTodayUrl(params.sport, division);
+      }
+
+      const scoreboardDate = new Date(urlDate);
+
+      // Use the year from URL
+      const effectiveYear = parseInt(year, 10) || new Date().getFullYear();
+
+      // Check if we should use new endpoint
+      const supportsNewApi = doesSupportScoreboardNewApi(
+        params.sport,
+        effectiveYear,
+        scoreboardDate.getMonth()
+      );
+
+      if (supportsNewApi && params.sport in newCodesBySport) {
+        try {
+          const sportCode = newCodesBySport[params.sport].code;
+          // Check week-based cache first for shared caching
+          const weekCacheKey = `${sportCode}_${division}_${urlDate}`;
+          if (cache.has(weekCacheKey)) {
+            set.headers["x-score-cache"] = "hit";
+            return cache.get(weekCacheKey);
+          }
+
+          const divisionCode = getDivisionCode(params.sport, division);
+
+          const newParams: NewScoreboardParams = {
+            sportCode,
+            division: divisionCode,
+            seasonYear: effectiveYear,
+          };
+
+          const weekCode = urlDate.split("/")[1] ?? "1";
+          const isFootball = sportCode === "MFB";
+          const isPlayoff = isFootball && weekCode === "P";
+
+          if (isFootball && !isPlayoff) {
+            newParams.week = parseInt(weekCode, 10);
+          } else if (!isPlayoff) {
+            newParams.contestDate = urlDate;
+          }
+
+          // Fetch playoff weeks combined or single week/date
+          const newData = isPlayoff
+            ? await fetchPlayoffScoreboard(newParams)
+            : await fetchGqlScoreboard(newParams);
+          const convertedData = await convertToOldFormat(
+            newData,
+            params.sport,
+            division,
+            urlDate
+          );
+          const data = JSON.stringify(convertedData);
+
+          // Use week-based cache key for shared caching across different URL formats
+          cache.set(weekCacheKey, data);
+
+          // Also cache under the original cache key for consistency
+          cache.set(cacheKey, data);
+          return data;
+        } catch (err) {
+          log(`Failed to fetch from new endpoint, falling back to old endpoint: ${err}`);
+          // Fall through to old endpoint logic
+        }
+      }
+
+      // Use old endpoint logic
+      const url = `https://data.ncaa.com/casablanca/scoreboard/${params.sport}/${division}/${urlDate}/scoreboard.json`;
+
+      const semUrl = getSemaphore(url);
+      await semUrl.acquire();
+      try {
+        // check cache
+        if (cache.has(url)) {
+          set.headers["x-score-cache"] = "hit";
+          return cache.get(url);
+        }
+        // fetch data
+        const res = await fetch(url);
+        if (!res.ok) {
+          return status(404, "Resource not found");
+        }
+        const data = JSON.stringify(await res.json());
+        cache.set(cacheKey, data);
+        cache.set(url, data);
+        return data;
+      } finally {
+        semUrl.release();
+      }
+    } finally {
+      semCacheKey.release();
+    }
+  },
     { detail: { hide: true } }
   )
   // all other routes fetch data by scraping ncaa.com
-  .get(
-    "/*",
-    async ({ query: { page }, path, cache, cacheKey }) => {
-      if (cache.has(cacheKey)) {
-        return cache.get(cacheKey);
-      }
-      // fetch data
-      const data = JSON.stringify(await getData({ path, page }));
-      cache.set(cacheKey, data);
-      return data;
-    },
+  .get("/*", async ({ query: { page }, path, cache, cacheKey }) => {
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
+    // fetch data
+    const data = JSON.stringify(await getData({ path, page }));
+    cache.set(cacheKey, data);
+    return data;
+  },
     { detail: { hide: true } }
   )
   .listen(3000);
@@ -606,16 +566,11 @@ async function getTodayUrl(sport: string, division: string): Promise<string> {
 
   log(`Fetching today.json for ${sport} ${division}`);
   try {
-    const today = await getScheduleBySportAndDivision(
-      sport,
-      division as DivisionKey
-    );
+    const today = await getScheduleBySportAndDivision(sport, division as DivisionKey);
     cache_30m.set(cacheKey, today);
     return today;
   } catch (err) {
-    log(
-      `Failed to fetch schedule from new endpoint, falling back to old endpoint: ${err}`
-    );
+    log(`Failed to fetch schedule from new endpoint, falling back to old endpoint: ${err}`);
     // Fall through to old endpoint logic
   }
   const req = await fetch(
@@ -636,9 +591,8 @@ async function getTodayUrl(sport: string, division: string): Promise<string> {
  */
 async function getData(opts: { path: string; page?: string }) {
   // fetch html
-  const url = `https://www.ncaa.com${opts.path}${
-    opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ""
-  }`;
+  const url = `https://www.ncaa.com${opts.path}${opts.page && Number(opts.page) > 1 ? `/p${opts.page}` : ""
+    }`;
   log(`Fetching ${url}`);
   const res = await fetch(url);
 
@@ -658,8 +612,7 @@ async function getData(opts: { path: string; page?: string }) {
   const route = opts.path.split("/")[1];
 
   // find general info
-  const sport =
-    document.querySelector("h2.page-title")?.textContent?.trim() ?? "";
+  const sport = document.querySelector("h2.page-title")?.textContent?.trim() ?? "";
 
   let title = "";
   const titleEl = document.querySelectorAll(
@@ -670,8 +623,7 @@ async function getData(opts: { path: string; page?: string }) {
     titleEl.querySelector(".hidden")?.remove();
     title = titleEl.textContent?.trim() ?? "";
   } else {
-    title =
-      route === "standings" ? "ALL CONFERENCES" : document.title.split(" |")[0];
+    title = route === "standings" ? "ALL CONFERENCES" : document.title.split(" |")[0];
   }
 
   const updated =
@@ -689,14 +641,11 @@ async function getData(opts: { path: string; page?: string }) {
     "ul.stats-pager li:not(.stats-pager__li--prev):not(.stats-pager__li--next)"
   );
   if (tablePageLinks.length > 0) {
-    page =
-      [...tablePageLinks].findIndex((li) => li.classList.contains("active")) +
-      1;
+    page = [...tablePageLinks].findIndex((li) => li.classList.contains("active")) + 1;
     pages = tablePageLinks.length;
   }
 
-  const data =
-    route === "standings" ? parseStandings(document) : parseTable(table);
+  const data = route === "standings" ? parseStandings(document) : parseTable(table);
 
   return { sport, title, updated, page, pages, data };
 }

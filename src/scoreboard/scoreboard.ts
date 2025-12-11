@@ -9,14 +9,7 @@ import type {
 } from "./types";
 
 // Re-export types for convenience
-export type {
-  NewScoreboardParams,
-  GraphQLResponse,
-  Contest,
-  Team,
-  OldFormatData,
-  OldFormatGame,
-};
+export type { NewScoreboardParams, GraphQLResponse, Contest, Team, OldFormatData, OldFormatGame };
 
 const instance_id = createHash("md5").digest("hex");
 
@@ -41,17 +34,13 @@ const PLAYOFF_WEEKS = [16, 17, 18, 19, 20];
 /**
  * Fetch all playoff weeks and combine contests
  */
-export async function fetchPlayoffScoreboard(
-  baseParams: Omit<NewScoreboardParams, "week">
-) {
+export async function fetchPlayoffScoreboard(baseParams: Omit<NewScoreboardParams, "week">) {
   const responses = await Promise.all(
     PLAYOFF_WEEKS.map((week) => fetchGqlScoreboard({ ...baseParams, week }))
   );
 
   // Combine all contests from each week
-  const allContests = responses.flatMap(
-    (response) => response?.data?.contests || []
-  );
+  const allContests = responses.flatMap((response) => response?.data?.contests || []);
 
   // Return in same structure as single week response
   return {
@@ -137,10 +126,7 @@ export async function convertToOldFormat(
         });
       };
 
-      const matchingOldGame = findMatchingGame(
-        homeTeam.nameShort,
-        awayTeam.nameShort
-      );
+      const matchingOldGame = findMatchingGame(homeTeam.nameShort, awayTeam.nameShort);
 
       // Helper function to format team data
       const formatTeam = (team: Team, isWinner: boolean, isHome: boolean) => {
@@ -150,9 +136,7 @@ export async function convertToOldFormat(
         let description = "";
 
         if (matchingOldGame?.game) {
-          const oldTeamData = isHome
-            ? matchingOldGame.game.home
-            : matchingOldGame.game.away;
+          const oldTeamData = isHome ? matchingOldGame.game.home : matchingOldGame.game.away;
           conferenceName = oldTeamData?.conferences?.[0]?.conferenceName || "";
           fullName = oldTeamData?.names?.full || "";
           description = oldTeamData?.description || "";
@@ -203,13 +187,10 @@ export async function convertToOldFormat(
           away: formatTeam(awayTeam, isAwayWinner, false),
           finalMessage: contest.finalMessage || "",
           bracketRound: "",
-          title: contest.teams
-            ? `${awayTeam.nameShort || ""} ${homeTeam.nameShort || ""}`
-            : "",
+          title: contest.teams ? `${awayTeam.nameShort || ""} ${homeTeam.nameShort || ""}` : "",
           contestName: "",
           url: contest.url || "",
-          network:
-            matchingOldGame?.game?.network || contest.broadcasterName || "",
+          network: matchingOldGame?.game?.network || contest.broadcasterName || "",
           home: formatTeam(homeTeam, isHomeWinner, true),
           liveVideoEnabled: (contest.liveVideos || []).length > 0,
           startTime: startTime,
