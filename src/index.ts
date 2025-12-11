@@ -34,6 +34,7 @@ const validRoutes = new Map([
   ["game", cache_45s],
   ["scoreboard", cache_45s],
   ["schedule-alt", cache_30m],
+  ["news", cache_30m],
 ]);
 
 /** log message to console with timestamp */
@@ -127,6 +128,93 @@ export const app = new Elysia()
         return data;
       } catch (_) {
         return status(500, "Error fetching data");
+      }
+    },
+    { detail: { hide: true } },
+  )
+  // news route to fetch and parse RSS feed
+  .get(
+    "/news/:sport/:division",
+    async ({ params, cache, cacheKey, status }) => {
+      if (cache.has(cacheKey)) {
+        return cache.get(cacheKey);
+      }
+
+      const url = `https://www.ncaa.com/news/${params.sport}/${params.division}/rss.xml`;
+      const res = await fetch(url);
+
+      if (!res.ok) {
+        return status(404, "RSS feed not found");
+      }
+
+      try {
+        const xmlContent = await res.text();
+
+        // Helper function to extract text between XML tags
+        const extractTag = (xml: string, tag: string): string => {
+          const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`, "i");
+          const match = xml.match(regex);
+          if (!match) return "";
+          let content = match[1].trim();
+          // Remove CDATA wrapper if present
+          content = content.replace(/^\s*<!\[CDATA\[\s*|\s*\]\]>\s*$/g, "");
+          return content;
+        };
+
+        // Extract channel info
+        const channelXml =
+          xmlContent.match(/<channel>([\s\S]*?)<\/channel>/i)?.[1] || "";
+        const channelTitle = extractTag(channelXml.split("<item>")[0], "title");
+        const channelLink = extractTag(channelXml.split("<item>")[0], "link");
+        const channelDesc = extractTag(
+          channelXml.split("<item>")[0],
+          "description",
+        );
+        const channelLang = extractTag(
+          channelXml.split("<item>")[0],
+          "language",
+        );
+
+        // Extract items
+        const itemMatches = xmlContent.matchAll(/<item>([\s\S]*?)<\/item>/gi);
+        const items = Array.from(itemMatches).map((match) => {
+          const itemXml = match[1];
+          let description = extractTag(itemXml, "description");
+          let imageUrl = "";
+
+          // Extract image URL from description if present
+          const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
+          if (imgMatch) {
+            imageUrl = imgMatch[1];
+            // Remove the img tag from description
+            description = description.replace(/<img[^>]*>\s*/i, "").trim();
+          }
+
+          return {
+            title: extractTag(itemXml, "title"),
+            link: extractTag(itemXml, "link"),
+            description: description,
+            image: imageUrl,
+            pubDate: extractTag(itemXml, "pubDate"),
+            creator: extractTag(itemXml, "dc:creator"),
+            category: extractTag(itemXml, "category"),
+            enclosure: extractTag(itemXml, "enclosure"),
+          };
+        });
+
+        const result = {
+          title: channelTitle,
+          link: channelLink,
+          description: channelDesc,
+          language: channelLang,
+          items,
+        };
+
+        const data = JSON.stringify(result);
+        cache.set(cacheKey, data);
+        return data;
+      } catch (_) {
+        return status(500, "Error parsing RSS feed");
       }
     },
     { detail: { hide: true } },

@@ -250,6 +250,34 @@ export const openapiSpec = openapi({
           ] as OpenAPIV3.ParameterObject[],
         },
       },
+      "/news/{sport}/{division}": {
+        get: {
+          summary: "News",
+          description:
+            "News articles and videos for a given sport and division. Returns parsed RSS feed data in JSON format.\n\nhttps://www.ncaa.com/news/basketball-men/d1/rss.xml",
+          parameters: [
+            {
+              name: "sport",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples([
+                "basketball-men",
+                "basketball-women",
+                "football",
+                "volleyball-women",
+              ]),
+            },
+            {
+              name: "division",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples(["d1", "d2", "d3", "fbs", "fcs"]),
+            },
+          ] as OpenAPIV3.ParameterObject[],
+        },
+      },
       "/schedule/{sport}/{division}/{path}": {
         get: {
           summary: "Schedule",
