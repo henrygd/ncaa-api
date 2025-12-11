@@ -1,14 +1,24 @@
 import { createHash } from "crypto";
+import type {
+  Contest,
+  GraphQLResponse,
+  NewScoreboardParams,
+  OldFormatData,
+  OldFormatGame,
+  Team,
+} from "./types";
+
+// Re-export types for convenience
+export type {
+  NewScoreboardParams,
+  GraphQLResponse,
+  Contest,
+  Team,
+  OldFormatData,
+  OldFormatGame,
+};
 
 const instance_id = createHash("md5").digest("hex");
-
-export interface NewScoreboardParams {
-  sportCode: string;
-  division: number;
-  seasonYear: number;
-  week?: number;
-  contestDate?: string;
-}
 
 /**
  * Fetch scoreboard data from new NCAA GraphQL endpoint
@@ -32,15 +42,15 @@ const PLAYOFF_WEEKS = [16, 17, 18, 19, 20];
  * Fetch all playoff weeks and combine contests
  */
 export async function fetchPlayoffScoreboard(
-  baseParams: Omit<NewScoreboardParams, "week">,
+  baseParams: Omit<NewScoreboardParams, "week">
 ) {
   const responses = await Promise.all(
-    PLAYOFF_WEEKS.map((week) => fetchGqlScoreboard({ ...baseParams, week })),
+    PLAYOFF_WEEKS.map((week) => fetchGqlScoreboard({ ...baseParams, week }))
   );
 
   // Combine all contests from each week
   const allContests = responses.flatMap(
-    (response) => response?.data?.contests || [],
+    (response) => response?.data?.contests || []
   );
 
   // Return in same structure as single week response
@@ -60,10 +70,10 @@ export async function fetchPlayoffScoreboard(
  * @returns data in old format
  */
 export async function convertToOldFormat(
-  newData: any,
+  newData: GraphQLResponse,
   sport: string,
   division: string,
-  date: string,
+  date: string
 ) {
   // Helper function to normalize game state to compatible values
   const normalizeGameState = (gameState: string): string => {
@@ -80,7 +90,7 @@ export async function convertToOldFormat(
   };
 
   // Try to fetch old format data to get missing fields
-  let oldFormatData = null;
+  let oldFormatData: OldFormatData | null = null;
   if (!sport.startsWith("basket") && !sport.startsWith("football")) {
     // basketball and football are always 404 (possibly all of them as of late 2025)
     try {
@@ -100,10 +110,10 @@ export async function convertToOldFormat(
 
   const contests = newData?.data?.contests || [];
   const games = await Promise.all(
-    contests.map(async (contest: any) => {
+    contests.map(async (contest: Contest) => {
       const teams = contest.teams || [];
-      const homeTeam = teams.find((team: any) => team.isHome);
-      const awayTeam = teams.find((team: any) => !team.isHome);
+      const homeTeam = teams.find((team: Team) => team.isHome);
+      const awayTeam = teams.find((team: Team) => !team.isHome);
 
       if (!homeTeam || !awayTeam) {
         return null;
@@ -114,7 +124,7 @@ export async function convertToOldFormat(
         if (!oldFormatData?.games) return null;
 
         // Look for game with matching team names
-        return oldFormatData.games.find((game: any) => {
+        return oldFormatData.games.find((game: OldFormatGame) => {
           const homeShort = game.game?.home?.names?.short?.toLowerCase();
           const awayShort = game.game?.away?.names?.short?.toLowerCase();
           const team1Lower = team1Name.toLowerCase();
@@ -129,11 +139,11 @@ export async function convertToOldFormat(
 
       const matchingOldGame = findMatchingGame(
         homeTeam.nameShort,
-        awayTeam.nameShort,
+        awayTeam.nameShort
       );
 
       // Helper function to format team data
-      const formatTeam = (team: any, isWinner: boolean, isHome: boolean) => {
+      const formatTeam = (team: Team, isWinner: boolean, isHome: boolean) => {
         // Try to get data from old format if available
         let conferenceName = "";
         let fullName = "";
@@ -213,7 +223,7 @@ export async function convertToOldFormat(
           contestClock: contest.contestClock || "0:00",
         },
       };
-    }),
+    })
   );
 
   const filteredGames = games.filter(Boolean);
