@@ -149,65 +149,59 @@ export const app = new Elysia()
 
       try {
         const xmlContent = await res.text();
+        const { document } = parseHTML(xmlContent);
 
-        // Helper function to extract text between XML tags
-        const extractTag = (xml: string, tag: string): string => {
-          const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`, "i");
-          const match = xml.match(regex);
-          if (!match) return "";
-          let content = match[1].trim();
-          // Remove CDATA wrapper if present
-          content = content.replace(/^\s*<!\[CDATA\[\s*|\s*\]\]>\s*$/g, "");
-          return content;
+        // Get text content, handling CDATA (raw or converted to HTML comments)
+        const getText = (el: Element | null) => {
+          const text = el?.textContent?.trim();
+          if (text) {
+            // Strip raw CDATA wrapper if present
+            const cdataMatch = text.match(/^<!\[CDATA\[([\s\S]*)\]\]>$/);
+            return cdataMatch ? cdataMatch[1].trim() : text;
+          }
+          // linkedom converts CDATA to comments when it contains HTML, extract from innerHTML
+          const html = el?.innerHTML ?? "";
+          const match = html.match(/^<!--\[CDATA\[([\s\S]*)\]\]-->$/);
+          return match ? match[1].trim() : "";
         };
 
-        // Extract channel info
-        const channelXml =
-          xmlContent.match(/<channel>([\s\S]*?)<\/channel>/i)?.[1] || "";
-        const channelTitle = extractTag(channelXml.split("<item>")[0], "title");
-        const channelLink = extractTag(channelXml.split("<item>")[0], "link");
-        const channelDesc = extractTag(
-          channelXml.split("<item>")[0],
-          "description",
-        );
-        const channelLang = extractTag(
-          channelXml.split("<item>")[0],
-          "language",
-        );
+        // linkedom treats <link> as void element, URL becomes next sibling text node
+        const getLink = (parent: Element | null) => {
+          const link = parent?.querySelector("link");
+          return link?.nextSibling?.textContent?.trim() ?? "";
+        };
 
-        // Extract items
-        const itemMatches = xmlContent.matchAll(/<item>([\s\S]*?)<\/item>/gi);
-        const items = Array.from(itemMatches).map((match) => {
-          const itemXml = match[1];
-          let description = extractTag(itemXml, "description");
-          let imageUrl = "";
-
-          // Extract image URL from description if present
-          const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
-          if (imgMatch) {
-            imageUrl = imgMatch[1];
-            // Remove the img tag from description
-            description = description.replace(/<img[^>]*>\s*/i, "").trim();
-          }
-
-          return {
-            title: extractTag(itemXml, "title"),
-            link: extractTag(itemXml, "link"),
-            description: description,
-            image: imageUrl,
-            pubDate: extractTag(itemXml, "pubDate"),
-            creator: extractTag(itemXml, "dc:creator"),
-            category: extractTag(itemXml, "category"),
-            enclosure: extractTag(itemXml, "enclosure"),
-          };
-        });
+        const channel = document.querySelector("channel");
 
         const result = {
-          title: channelTitle,
-          link: channelLink,
-          description: channelDesc,
-          language: channelLang,
-          items,
+          title: getText(channel?.querySelector("title") ?? null),
+          link: getLink(channel),
+          description: getText(channel?.querySelector("description") ?? null),
+          language: getText(channel?.querySelector("language") ?? null),
+          items: [...document.querySelectorAll("item")].map((item) => {
+            let description = getText(item.querySelector("description"));
+            let image = "";
+
+            // Extract image URL from description HTML if present
+            const imgMatch = description.match(
+              /<img[^>]+src=["']([^"']+)["']/i,
+            );
+            if (imgMatch) {
+              image = imgMatch[1];
+              description = description.replace(/<img[^>]*>\s*/i, "").trim();
+            }
+
+            return {
+              title: getText(item.querySelector("title")),
+              link: getLink(item),
+              description,
+              image,
+              pubDate: getText(item.querySelector("pubDate")),
+              creator: getText(item.querySelector("dc\\:creator")),
+              category: getText(item.querySelector("category")),
+              enclosure: getText(item.querySelector("enclosure")),
+            };
+          }),
         };
 
         const data = JSON.stringify(result);
