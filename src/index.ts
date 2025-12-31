@@ -8,6 +8,7 @@ import {
   doesSupportScoreboardNewApi,
   getDivisionCode,
   getScheduleBySportAndDivision,
+  getSeasonYear,
   newCodesBySport,
   playByPlayHashes,
   teamStatsHashes,
@@ -452,14 +453,19 @@ export const app = new Elysia()
 
           const divisionCode = getDivisionCode(params.sport, division);
 
+          const isFootball = sportCode === "MFB";
+          const seasonYear =
+            isFootball || isNaN(scoreboardDate.getTime())
+              ? effectiveYear
+              : getSeasonYear(scoreboardDate);
+
           const newParams: NewScoreboardParams = {
             sportCode,
             division: divisionCode,
-            seasonYear: effectiveYear,
+            seasonYear,
           };
 
           const weekCode = urlDate.split("/")[1] ?? "1";
-          const isFootball = sportCode === "MFB";
           const isPlayoff = isFootball && weekCode === "P";
 
           if (isFootball && !isPlayoff) {

@@ -158,6 +158,18 @@ export const newCodesBySport: Record<
 };
 
 /**
+ * Get the NCAA season year for a given date.
+ * The season year is the year the academic year starts (e.g., 2025-26 season is 2025).
+ * @param date - The date to check
+ * @returns The NCAA season year
+ */
+export function getSeasonYear(date: Date) {
+  // NCAA season year flips in August.
+  // getMonth() is 0-indexed, so 0-6 (Jan-July) is the previous year's season.
+  return date.getMonth() < 7 ? date.getFullYear() - 1 : date.getFullYear();
+}
+
+/**
  * Checks if the new API supports the given date and year. New API supports 2026 and after, and 2025 starting in August.
  * @param date - The date to check
  * @param year - The year to check
@@ -213,7 +225,7 @@ export async function getScheduleBySportAndDivision(sport: string, division: Div
 
   const url = `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"a25ad021179ce1d97fb951a49954dc98da150089f9766e7e85890e439516ffbf"}}&queryName=NCAA_schedules_today_web&variables={"sportCode":"${
     sportData.code
-  }","division":${divisionCode},"seasonYear":${new Date().getFullYear()}}`;
+  }","division":${divisionCode},"seasonYear":${getSeasonYear(new Date())}}`;
 
   const req = await fetch(url);
   if (!req.ok) {

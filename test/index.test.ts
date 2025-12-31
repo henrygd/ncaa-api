@@ -136,6 +136,16 @@ describe("General", () => {
     expect(gameOne?.game?.gameID).toBe("6463999");
     expect(gameOne?.game?.away?.score).toBe("1");
   });
+  it("new scoreboard basketball route for 2026 returns games from 2025 season", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/scoreboard/basketball-men/d1/2026/01/01")
+    );
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.games.length).toBeGreaterThan(0);
+    // Liberty vs Western Kentucky game ID from 2025 season
+    expect(data.games[0].game.gameID).toBe("6502144");
+  });
   it("semaphore queues simultaneous requests for same scoreboard resource", async () => {
     const requests = [];
     // will fail when baseball season starts again bc date will be different
