@@ -365,8 +365,9 @@ export const app = new Elysia()
   )
   // schedule route to retrieve game dates
   .get("/schedule/:sport/:division/*", async ({ cache, cacheKey, params, status }) => {
+    const rest = decodeURIComponent(params["*"]);
     const req = await fetch(
-      `https://data.ncaa.com/casablanca/schedule/${params.sport}/${params.division}/${params["*"]}/schedule-all-conf.json`
+      `https://data.ncaa.com/casablanca/schedule/${params.sport}/${params.division}/${rest}/schedule-all-conf.json`
     );
 
     if (!req.ok) {
@@ -412,11 +413,12 @@ export const app = new Elysia()
       }
 
       // Parse URL path to extract year and week parameters
-      const [division, year] = params["*"].split("/");
+      const rest = decodeURIComponent(params["*"]);
+      const [division, year] = rest.split("/");
 
       // find date in url
       const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/;
-      let urlDate = params["*"].match(urlDateMatcher)?.[0];
+      let urlDate = rest.match(urlDateMatcher)?.[0];
 
       if (urlDate) {
         // return 400 if date is more than a year in the future
