@@ -151,7 +151,7 @@ describe("General", () => {
     // will fail when baseball season starts again bc date will be different
     // should be replace with whatever sport has the longest until it starts again
     const routes = [
-      "/scoreboard/baseball/d1",
+      "/scoreboard/baseball/d1/2025/06/22",
       "/scoreboard/baseball/d1/2025/06/22/all-conf",
     ];
     for (let i = 0; i < 3; i++) {
@@ -206,7 +206,7 @@ describe("General", () => {
     expect(response.headers.get("cache-control")).toBe("public, max-age=1800");
     const json = await response.json();
     expect(json.championships).toBeArray();
-    expect(json.championships[0].title).toContain("2024 Division I Men's Basketball Championship");
+    expect(json.championships[0].title).toContain("2024 DI Men's Basketball Championship");
   });
 });
 
