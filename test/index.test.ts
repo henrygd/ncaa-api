@@ -198,6 +198,16 @@ describe("General", () => {
       expect(response.status).toBe(404);
     }
   });
+  it("brackets route returns good data", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/brackets/basketball-men/d1/2024")
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, max-age=1800");
+    const json = await response.json();
+    expect(json.championships).toBeArray();
+    expect(json.championships[0].title).toContain("2024 Division I Men's Basketball Championship");
+  });
 });
 
 describe("Header validation", () => {

@@ -21,11 +21,14 @@ import {
 } from "./scoreboard/scoreboard";
 import type { NewScoreboardParams } from "./scoreboard/types";
 
-// set cache expiry to 30 min
+// 30 minute cache for most routes
 const cache_30m = new ExpiryMap(30 * 60 * 1000);
 
-// set scores cache expiry to 1 min
+// 45 second cache for scores
 const cache_45s = new ExpiryMap(1 * 45 * 1000);
+
+// 5 minute cache for brackets
+const cache_5m = new ExpiryMap(5 * 60 * 1000);
 
 // valid routes for the app with their respective caches
 const validRoutes = new Map([
@@ -39,6 +42,7 @@ const validRoutes = new Map([
   ["scoreboard", cache_45s],
   ["schedule-alt", cache_30m],
   ["news", cache_30m],
+  ["brackets", cache_5m],
 ]);
 
 /** log message to console with timestamp */
@@ -362,6 +366,59 @@ export const app = new Elysia()
           }),
         }
       )
+  )
+  // brackets route to retrieve tournament brackets
+  .get("/brackets/:sport/:division/:year", async ({ cache, cacheKey, params, status }) => {
+    let divisionCode: string | number;
+    try {
+      divisionCode = getDivisionCode(params.sport, params.division);
+    } catch (_) {
+      return status(400, "Invalid sport or division");
+    }
+
+    const variables = {
+      sportUrl: params.sport,
+      division: Number(divisionCode),
+      year: parseInt(params.year, 10),
+      // showUnstaged: false,
+      // staticTestEnv: null,
+    };
+    const extensions = {
+      persistedQuery: {
+        version: 1,
+        sha256Hash: "e651c2602fb9e82cdad6e947389600c6b69e0e463e437b78bf7ec614d6d15f80",
+      },
+    };
+    const url = `https://sdataprod.ncaa.com/?operationName=get_championship_ncaa&variables=${encodeURIComponent(
+      JSON.stringify(variables)
+    )}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`;
+
+    const req = await fetch(url);
+
+    if (!req.ok) {
+      return status(404, "Resource not found");
+    }
+
+    try {
+      const json = await req.json();
+      if (!json?.data?.championships || json.data.championships.length === 0) {
+        return status(404, "Resource not found");
+      }
+      const data = JSON.stringify(json.data);
+      cache.set(cacheKey, data);
+      return data;
+    } catch (_) {
+      return status(502, "Error parsing upstream response");
+    }
+  },
+    {
+      detail: { hide: true },
+      params: t.Object({
+        sport: t.String(),
+        division: t.String(),
+        year: t.String(),
+      }),
+    }
   )
   // schedule route to retrieve game dates
   .get("/schedule/:sport/:division/*", async ({ cache, cacheKey, params, status }) => {

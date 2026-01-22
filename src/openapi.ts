@@ -255,6 +255,37 @@ export const openapiSpec = openapi({
           ] as OpenAPIV3.ParameterObject[],
         },
       },
+      "/brackets/{sport}/{division}/{year}": {
+        get: {
+          responses: {},
+          summary: "Brackets",
+          description:
+            "Tournament bracket for a given sport, division, and year.\n\nThis endpoint is experimental does not include FBS football brackets prior to 2025.\n\nhttps://www.ncaa.com/brackets/basketball-men/d1/2024",
+          parameters: [
+            {
+              name: "sport",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples(["basketball-men", "basketball-women", "football", "baseball-men", "softball", "icehockey-men", "icehockey-women", "soccer-men", "soccer-women", "volleyball-men", "volleyball-women", "fieldhockey-men", "fieldhockey-women", "lacrosse-men", "lacrosse-women"]),
+            },
+            {
+              name: "division",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples(["d1", "d2", "d3", "fbs", "fcs"]),
+            },
+            {
+              name: "year",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples(["2025", "2024"]),
+            },
+          ],
+        },
+      },
       "/news/{sport}/{division}": {
         get: {
           responses: {},
