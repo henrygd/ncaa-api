@@ -198,6 +198,18 @@ describe("General", () => {
       expect(response.status).toBe(404);
     }
   });
+  it("baseball boxscore returns good data", async () => {
+    const gameId = "6543070";
+    const response = await app.handle(
+      new Request(`http://localhost/game/${gameId}/boxscore`)
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+    const data = await response.json();
+    expect(data).toContainKeys(["teams", "teamBoxscore"]);
+    expect(data.teamBoxscore?.[0]?.playerStats).toBeArray();
+    expect(data.teamBoxscore?.[0]?.teamStats).toContainKey("battingStats");
+  });
   it("brackets route returns good data", async () => {
     const response = await app.handle(
       new Request("http://localhost/brackets/basketball-men/d1/2024")

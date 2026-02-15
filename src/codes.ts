@@ -6,6 +6,7 @@ export const playByPlayHashes = {
 };
 
 export const boxscoreHashes = {
+  TeamStatsBaseball: "5e92118b2f424040aa96067aba6d34e882165aaf02e9e73cb9d69317066c6ae8",
   TeamStatsBasketball: "4a7fa26398db33de3ff51402a90eb5f25acef001cca28d239fe5361315d1419a",
   TeamStatsFieldhockey: "eff2e8b300974fd628e8718bfeb476e8d1897eb2a0fda7f8fdcae5b29ce2e54e",
   TeamStatsFootball: "babb939def47c602a6e81af7aa3f6b35197fb1f1b1a2f2b081f3a3e4924be82e",
