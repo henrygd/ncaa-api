@@ -181,29 +181,44 @@ export async function convertToOldFormat(
         }
       }
 
-      return {
-        game: {
-          gameID: contest.contestId?.toString() || "",
-          away: formatTeam(awayTeam, isAwayWinner, false),
-          finalMessage: contest.finalMessage || "",
-          bracketRound: "",
-          title: contest.teams ? `${awayTeam.nameShort || ""} ${homeTeam.nameShort || ""}` : "",
-          contestName: "",
-          url: contest.url || "",
-          network: matchingOldGame?.game?.network || contest.broadcasterName || "",
-          home: formatTeam(homeTeam, isHomeWinner, true),
-          liveVideoEnabled: (contest.liveVideos || []).length > 0,
-          startTime: startTime,
-          startTimeEpoch: contest.startTimeEpoch?.toString() || "",
-          bracketId: "",
-          gameState: normalizeGameState(contest.gameState || ""),
-          startDate: contest.startDate || "",
-          currentPeriod: contest.currentPeriod || "",
-          videoState: "",
-          bracketRegion: "",
-          contestClock: contest.contestClock || "0:00",
-        },
+      const game: Record<
+        string,
+        string | number | boolean | ReturnType<typeof formatTeam> | typeof contest.championshipGame
+      > = {
+        gameID: contest.contestId?.toString() || "",
+        away: formatTeam(awayTeam, isAwayWinner, false),
+        finalMessage: contest.finalMessage || "",
+        title: contest.teams ? `${awayTeam.nameShort || ""} ${homeTeam.nameShort || ""}` : "",
+        url: contest.url || "",
+        network: matchingOldGame?.game?.network || contest.broadcasterName || "",
+        home: formatTeam(homeTeam, isHomeWinner, true),
+        liveVideoEnabled: (contest.liveVideos || []).length > 0,
+        startTime: startTime,
+        startTimeEpoch: contest.startTimeEpoch?.toString() || "",
+        gameState: normalizeGameState(contest.gameState || ""),
+        startDate: contest.startDate || "",
+        currentPeriod: contest.currentPeriod || "",
+        contestClock: contest.contestClock || "0:00",
+        bracketId: contest.bracketId || "",
+        bracketRound: contest.roundNumber || "",
+        // bracketRegion: "",
+        // videoState: "",
+        // contestName: contest.teams
+        //   ? `${awayTeam.nameShort || ""} at ${homeTeam.nameShort || ""}`
+        //   : "",
       };
+      // if (contest.roundDescription) {
+      //   game.roundDescription = contest.roundDescription;
+      // }
+      if (contest.championshipId) {
+        game.championshipId = contest.championshipId;
+      }
+      if (contest.championshipGame) {
+        delete contest.championshipGame.__typename;
+        delete contest.championshipGame.round?.__typename;
+        game.championshipGame = contest.championshipGame;
+      }
+      return { game };
     })
   );
 

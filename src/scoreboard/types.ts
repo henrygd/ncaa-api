@@ -33,6 +33,14 @@ export interface Contest {
   gameState?: string;
   currentPeriod?: string;
   contestClock?: string;
+  bracketId?: number;
+  roundNumber?: number;
+  roundDescription?: string;
+  championshipId?: number;
+  championshipGame?: {
+    __typename?: string;
+    round?: Record<string, unknown>;
+  };
 }
 
 export interface GraphQLResponse {
