@@ -28,7 +28,7 @@ const cache_30m = new ExpiryMap(30 * 60 * 1000);
 const cache_45s = new ExpiryMap(1 * 45 * 1000);
 
 // 5 minute cache for brackets
-const cache_5m = new ExpiryMap(5 * 60 * 1000);
+// const cache_5m = new ExpiryMap(5 * 60 * 1000);
 
 // valid routes for the app with their respective caches
 const validRoutes = new Map([
@@ -42,7 +42,7 @@ const validRoutes = new Map([
   ["scoreboard", cache_45s],
   ["schedule-alt", cache_30m],
   ["news", cache_30m],
-  ["brackets", cache_5m],
+  ["brackets", cache_45s] // make this 45s during the tournament
 ]);
 
 /** log message to console with timestamp */
@@ -514,7 +514,7 @@ export const app = new Elysia()
 
           const isFootball = sportCode === "MFB";
           const seasonYear =
-            isFootball || isNaN(scoreboardDate.getTime())
+            isFootball || Number.isNaN(scoreboardDate.getTime())
               ? effectiveYear
               : getSeasonYear(scoreboardDate);
 
