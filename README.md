@@ -2,7 +2,7 @@
 
 Free API to return consumable data from ncaa.com.
 
-Works with scores, stats, rankings, standings, schedules, history, logos, and game details (box score, play by play, scoring summary, team stats).
+Works with scores, stats, rankings, standings, schedules, brackets, history, logos, news, and game details (box score, play by play, scoring summary, team stats).
 
 Try it out here: <https://ncaa-api.henrygd.me/openapi>
 
@@ -34,164 +34,15 @@ Website: <https://www.ncaa.com/scoreboard/football/fbs/2023/13/all-conf>
 
 `GET /scoreboard/football/fbs/2023/13/all-conf`
 
-```json
-{
-  "inputMD5Sum": "946b0d7ecce3877d6cd036a19daf95ed",
-  "instanceId": "52aa051f77b7475da1baba2df45d5e98",
-  "updated_at": "01-19-2024 23:50:30",
-  "hideRank": false,
-  "games": [
-    {
-      "game": {
-        "away": {
-          "score": "24",
-          "names": {
-            "char6": "OHIOST",
-            "short": "Ohio St.",
-            "seo": "ohio-st",
-            "full": "The Ohio State University"
-          },
-          "winner": false,
-          "seed": "",
-          "description": "(11-1)",
-          "rank": "2",
-          "conferences": [
-            {
-              "conferenceName": "Big Ten",
-              "conferenceSeo": "big-ten"
-            },
-            {
-              "conferenceName": "Top 25",
-              "conferenceSeo": "top-25"
-            }
-          ]
-        },
-        "home": {
-          "score": "30",
-          "names": {
-            "char6": "MICH",
-            "short": "Michigan",
-            "seo": "michigan",
-            "full": "University of Michigan"
-          },
-          "winner": true,
-          "seed": "",
-          "description": "(12-0)",
-          "rank": "3",
-          "conferences": [
-            {
-              "conferenceName": "Big Ten",
-              "conferenceSeo": "big-ten"
-            },
-            {
-              "conferenceName": "Top 25",
-              "conferenceSeo": "top-25"
-            }
-          ]
-        },
-        "gameID": "3146430",
-        "finalMessage": "FINAL",
-        "bracketRound": "",
-        "title": "Michigan Ohio St.",
-        "contestName": "",
-        "url": "/game/6154104",
-        "network": "",
-        "liveVideoEnabled": false,
-        "startTime": "12:00PM ET",
-        "startTimeEpoch": "1700931600",
-        "bracketId": "",
-        "gameState": "final",
-        "startDate": "11-25-2023",
-        "currentPeriod": "FINAL",
-        "videoState": "",
-        "bracketRegion": "",
-        "contestClock": "0:00"
-      }
-    },
-    ...
-  ]
-}
-```
-
 ### Stats
 
 Website: <https://www.ncaa.com/stats/football/fbs/current/team/28>
 
 `GET /stats/football/fbs/current/team/28`
 
-```json
-{
-  "sport": "Football",
-  "title": "Scoring Defense",
-  "updated": "Monday, January 08, 2024 11:52 pm - Through games Monday, January 08, 2024",
-  "page": 1,
-  "pages": 3,
-  "data": [
-    {
-      "Rank": "1",
-      "Team": "Michigan",
-      "G": "15",
-      "TDs": "17",
-      "Opp XP": "15",
-      "2PT": "0",
-      "Opp DXP": "0",
-      "Opp FGM": "13",
-      "Opp Saf": "0",
-      "Pts": "156.00",
-      "Avg": "10.40"
-    },
-    {
-      "Rank": "2",
-      "Team": "Ohio St.",
-      "G": "13",
-      "TDs": "15",
-      "Opp XP": "14",
-      "2PT": "0",
-      "Opp DXP": "0",
-      "Opp FGM": "14",
-      "Opp Saf": "0",
-      "Pts": "146.00",
-      "Avg": "11.23"
-    },
-    ...
-  ]
-}
-```
-
 Website: <https://www.ncaa.com/stats/football/fbs/current/individual/750>
 
 `GET /stats/football/fbs/current/individual/750`
-
-```json
-{
-  "sport": "Football",
-  "title": "Rushing TDs",
-  "updated": "Monday, January 08, 2024 11:52 pm - Through games Monday, January 08, 2024",
-  "page": 1,
-  "pages": 6,
-  "data": [
-    {
-      "Rank": "1",
-      "Name": "Blake Corum",
-      "Team": "Michigan",
-      "Cl": "Sr.",
-      "Position": "RB",
-      "G": "15",
-      "Rush TD": "27"
-    },
-    {
-      "Rank": "2",
-      "Name": "Ollie Gordon",
-      "Team": "Oklahoma St.",
-      "Cl": "So.",
-      "Position": "RB",
-      "G": "14",
-      "Rush TD": "21"
-    },
-    ...
-  ]
-}
-```
 
 ### Rankings
 
@@ -199,153 +50,11 @@ Website: <https://www.ncaa.com/rankings/football/fbs/associated-press>
 
 `GET /rankings/football/fbs/associated-press`
 
-```json
-{
-  "sport": "Football",
-  "title": "College football rankings: Associated Press Top 25",
-  "updated": "Through Games JAN. 8, 2024",
-  "page": 1,
-  "pages": 1,
-  "data": [
-    {
-      "RANK": "1",
-      "SCHOOL": "Michigan (61)",
-      "POINTS": "1525 ",
-      "PREVIOUS": "1",
-      "RECORD": "15-0"
-    },
-    {
-      "RANK": "2",
-      "SCHOOL": "Washington",
-      "POINTS": "1459",
-      "PREVIOUS": "2",
-      "RECORD": "14-1"
-    },
-    ...
-  ]
-}
-```
-
 ### Standings
 
 Website: <https://www.ncaa.com/standings/basketball-women/d1>
 
 `GET /standings/basketball-women/d1`
-
-```json
-{
-  "sport": "Women's Basketball",
-  "title": "ALL CONFERENCES",
-  "updated": "Feb 03, 2024 05:08 AM EDT",
-  "page": 1,
-  "pages": 1,
-  "data": [
-    {
-      "conference": "ASUN",
-      "standings": [
-        {
-          "School": "FGCU",
-          "Conference W": "9",
-          "Conference L": "0",
-          "Conference PCT": "1.000",
-          "Overall W": "19",
-          "Overall L": "4",
-          "Overall PCT": "0.826",
-          "Overall STREAK": "Won 12"
-        },
-        {
-          "School": "Central Ark.",
-          "Conference W": "7",
-          "Conference L": "1",
-          "Conference PCT": "0.875",
-          "Overall W": "15",
-          "Overall L": "6",
-          "Overall PCT": "0.714",
-          "Overall STREAK": "Won 4"
-        },
-        ...
-      ]
-    },
-    ...
-  ]
-}
-```
-
-### History
-
-Website: <https://www.ncaa.com/history/bowling/nc>
-
-`GET /history/bowling/nc`
-
-```json
-{
-  "sport": "Bowling",
-  "title": "Championship History",
-  "updated": "",
-  "page": 1,
-  "pages": 1,
-  "data": [
-    {
-      "Year": "2023",
-      "Champion": "Vanderbilt",
-      "Coach": "John Williamson",
-      "Games": "3",
-      "Runner-Up": "Arkansas State",
-      "Host/Site": "Las Vegas, NV"
-    },
-    {
-      "Year": "2022",
-      "Champion": "McKendree",
-      "Coach": "Shannon O'Keefe",
-      "Games": "0",
-      "Runner-Up": "Stephen F. Austin",
-      "Host/Site": "Columbus, OH"
-    },
-    ...
-  ]
-}
-```
-
-### Schedule
-
-Returns game dates for a given sport, division, and date range.
-
-This is the only route that doesn't exactly match a website URL. The website doesn't have schedule pages, but the sport and division are consistent with other URLs.
-
-It also requires different dates for different sports. Football uses YYYY, while basketball, hockey, and others use YYYY/MM.
-
-`GET /schedule/basketball-men/d1/2023/02`
-
-```json
-{
-  "division": "d1",
-  "inputMD5Sum": "ba47f9e21af54d3d4b5f81fc38048e29",
-  "month": "02",
-  "conference_name": "all-conf",
-  "created_at": "08-07-2023 15:32:05",
-  "season": "2022",
-  "sport": "MBB",
-  "gameDates": [
-    {
-      "contest_date": "02-01-2023",
-      "year": "2023",
-      "weekday": "Wed",
-      "games": 47,
-      "season": "2022",
-      "day": "01"
-    },
-    {
-      "contest_date": "02-02-2023",
-      "year": "2023",
-      "weekday": "Thu",
-      "games": 75,
-      "season": "2022",
-      "day": "02"
-    },
-    ...
-  ]
-}
-```
 
 ### Game
 
@@ -359,6 +68,40 @@ Website: <https://www.ncaa.com/game/6305900>
 - `GET /game/6305900/scoring-summary` returns scoring summary if available
 - `GET /game/6305900/team-stats` returns team stats if available
 
+### History
+
+Website: <https://www.ncaa.com/history/bowling/nc>
+
+`GET /history/bowling/nc`
+
+### Schedule
+
+Returns game dates for a given sport, division, and date range.
+
+This is the only route that doesn't exactly match a website URL. The website doesn't have schedule pages, but the sport and division are consistent with other URLs.
+
+It also requires different dates for different sports. Football uses YYYY, while basketball, hockey, and others use YYYY/MM.
+
+`GET /schedule/basketball-men/d1/2023/02`
+
+### Brackets
+
+Tournament bracket for a given sport, division, and year, including live scores.
+
+Like the official website, this endpoint does not include FBS football brackets prior to 2025.
+
+Website: <https://www.ncaa.com/brackets/basketball-men/d1/2026>
+
+`GET /brackets/basketball-men/d1/2026`
+
+### News
+
+News articles and videos for a given sport and division. Returns parsed RSS feed data in JSON format.
+
+Website: <https://www.ncaa.com/news/basketball-men/d1/rss.xml>
+
+`GET /news/basketball-men/d1`
+
 ### Schools Index
 
 Returns a list of all schools.
@@ -367,9 +110,16 @@ Website: <https://www.ncaa.com/schools-index>
 
 `GET /schools-index`
 
+### Logos
+
+Logos for all NCAA schools. Use the school `slug` or `team_seo` property.
+
+- `GET /logo/michigan.svg`
+- `GET /logo/michigan.svg?dark=true` returns a version of the logo that works better on dark backgrounds.
+
 ## Deployment
 
-Use the included [docker-compose.yml](/docker-compose.yml) or run directly with docker:
+Use the included [docker-compose.yml](/docker-compose.yml) or run directly with Docker:
 
 ```bash
 docker run --rm -p 3000:3000 henrygd/ncaa-api

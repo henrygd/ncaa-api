@@ -261,7 +261,7 @@ export const openapiSpec = openapi({
           responses: {},
           summary: "Brackets",
           description:
-            "Tournament bracket for a given sport, division, and year.\n\nThis endpoint is experimental does not include FBS football brackets prior to 2025.\n\nhttps://www.ncaa.com/brackets/basketball-men/d1/2026",
+            "Tournament bracket for a given sport, division, and year, including live scores.\n\nLike the official website, this endpoint does not include FBS football brackets prior to 2025.\n\nhttps://www.ncaa.com/brackets/basketball-men/d1/2026",
           parameters: [
             {
               name: "sport",
