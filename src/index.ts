@@ -5,7 +5,6 @@ import { parseHTML } from "linkedom";
 import {
   boxscoreHashes,
   type DivisionKey,
-  doesSupportScoreboardNewApi,
   getDivisionCode,
   getScheduleBySportAndDivision,
   getSeasonYear,
@@ -99,6 +98,10 @@ export const app = new Elysia()
     const basePath = path.split("/")[1];
     if (!validRoutes.has(basePath)) {
       return status(400, "Invalid resource");
+    }
+    // strip /all-conf from path for caching purposes since it's the default
+    if (path.endsWith("/all-conf")) {
+      path = path.replace("/all-conf", "");
     }
     return {
       basePath,
@@ -478,9 +481,10 @@ export const app = new Elysia()
       let urlDate = rest.match(urlDateMatcher)?.[0];
 
       if (urlDate) {
-        // return 400 if date is more than a year in the future
-        // (had runaway bot requesting every day until I noticed it in 2195)
-        if (new Date(urlDate).getFullYear() > new Date().getFullYear() + 1) {
+        // reject if date is unrealistic (runaway bots requesting every year until infinity)
+        const currentYear = new Date().getFullYear();
+        const urlYear = parseInt(urlDate.split("/")[0], 10);
+        if (urlYear < 2010 || urlYear > currentYear + 1) {
           return status(400, "Invalid date");
         }
       } else {
@@ -490,17 +494,12 @@ export const app = new Elysia()
 
       const scoreboardDate = new Date(urlDate);
 
-      // Use the year from URL
-      const effectiveYear = parseInt(year, 10) || new Date().getFullYear();
+      // Use the year from URL (prefer the one in the date)
+      const yearFromUrlDate = urlDate ? parseInt(urlDate.split("/")[0], 10) : null;
+      const effectiveYear = yearFromUrlDate || parseInt(year, 10) || new Date().getFullYear();
 
-      // Check if we should use new endpoint
-      const supportsNewApi = doesSupportScoreboardNewApi(
-        params.sport,
-        effectiveYear,
-        scoreboardDate.getMonth()
-      );
 
-      if (supportsNewApi && params.sport in newCodesBySport) {
+      if (params.sport in newCodesBySport) {
         try {
           const sportCode = newCodesBySport[params.sport].code;
           // Check week-based cache first for shared caching
@@ -541,7 +540,8 @@ export const app = new Elysia()
             newData,
             params.sport,
             division,
-            urlDate
+            urlDate,
+            effectiveYear
           );
           const data = JSON.stringify(convertedData);
 

@@ -170,26 +170,6 @@ export function getSeasonYear(date: Date) {
   return date.getMonth() < 7 ? date.getFullYear() - 1 : date.getFullYear();
 }
 
-/**
- * Checks if the new API supports the given date and year. New API supports 2026 and after, and 2025 starting in August.
- * @param date - The date to check
- * @param year - The year to check
- * @returns True if the new API supports the given date and year, false otherwise
- */
-export function doesSupportScoreboardNewApi(sport: string, year: number, month: number) {
-  if (year >= 2026) {
-    return true;
-  }
-  // handle football special case (only have year and week)
-  if (sport === "football" && year === 2025) {
-    return true;
-  }
-  if (year === 2025 && month >= 8) {
-    return true;
-  }
-  return false;
-}
-
 export const getDivisionCode = (sport: string, division: string) => {
   const sportData = newCodesBySport[sport as keyof typeof newCodesBySport];
   if (!sportData) {
@@ -211,6 +191,46 @@ export type DivisionKey = "fbs" | "fcs" | "d1" | "d2" | "d3";
 const errNotSupported = (sport: string, division: string) =>
   new Error(`${sport} ${division} is not supported`);
 
+/**
+ * Extract currentDate from NCAA scoreboard HTML drupal-settings-json.
+ * This is more reliable than the today.json endpoint for football.
+ */
+async function getDateFromScoreboardPage(sport: string, division: string): Promise<string | null> {
+  const response = await fetch(`https://www.ncaa.com/scoreboard/${sport}/${division}`);
+  if (!response.ok) {
+    return null;
+  }
+  const html = await response.text();
+  const scriptMarker = `"currentDate":{`;
+  const startIndex = html.indexOf(scriptMarker);
+  if (startIndex === -1) return null;
+
+  const segment = html.substring(startIndex, startIndex + 200);
+
+  if (sport === "football") {
+    // Match objects with year and week (football) or year, month, and day (others)
+    const footballRegex = /"currentDate":\s*\{\s*"year":\s*"(\d+)",\s*"week":\s*"([^"]+)"\s*\}/;
+    const footballMatch = segment.match(footballRegex);
+    if (footballMatch) {
+      const year = footballMatch[1];
+      const week = footballMatch[2];
+      return `${year}/${week}`;
+    }
+    return null;
+  }
+
+  const otherSportsRegex =
+    /"currentDate":\s*\{\s*"year":\s*"(\d+)",\s*"month":\s*"(\d+)",[^}]*"day":\s*"(\d+)"/;
+  const otherSportsMatch = segment.match(otherSportsRegex);
+  if (otherSportsMatch) {
+    const year = otherSportsMatch[1];
+    const month = otherSportsMatch[2];
+    const day = otherSportsMatch[3];
+    return `${year}/${month}/${day}`;
+  }
+  return null;
+}
+
 export async function getScheduleBySportAndDivision(sport: string, division: DivisionKey) {
   if (!supportedSports.includes(sport)) {
     throw errNotSupported(sport, division);
@@ -224,9 +244,14 @@ export async function getScheduleBySportAndDivision(sport: string, division: Div
     throw errNotSupported(sport, division);
   }
 
-  const url = `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"a25ad021179ce1d97fb951a49954dc98da150089f9766e7e85890e439516ffbf"}}&queryName=NCAA_schedules_today_web&variables={"sportCode":"${
-    sportData.code
-  }","division":${divisionCode},"seasonYear":${getSeasonYear(new Date())}}`;
+  // Try fetching from the scoreboard page HTML first 
+  const todayScoreboardPage = await getDateFromScoreboardPage(sport, division);
+  if (todayScoreboardPage) {
+    return todayScoreboardPage;
+  }
+
+  const url = `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"a25ad021179ce1d97fb951a49954dc98da150089f9766e7e85890e439516ffbf"}}&queryName=NCAA_schedules_today_web&variables={"sportCode":"${sportData.code
+    }","division":${divisionCode},"seasonYear":${getSeasonYear(new Date())}}`;
 
   const req = await fetch(url);
   if (!req.ok) {

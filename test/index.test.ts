@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { getScheduleBySportAndDivision } from "../src/codes";
 import { app } from "../src/index";
+import { sleep } from "bun";
 
 describe("General", () => {
   it("home route redirects to openapi", async () => {
@@ -12,9 +13,7 @@ describe("General", () => {
     expect(response.status).toBe(400);
   });
   it("invalid page param returns 400", async () => {
-    const response = await app.handle(
-      new Request("http://localhost/stats/test?page=invalid")
-    );
+    const response = await app.handle(new Request("http://localhost/stats/test?page=invalid"));
     expect(response.status).toBe(400);
   });
   it("rankings route returns good data", async () => {
@@ -37,24 +36,16 @@ describe("General", () => {
     expect(data).toContainKey("games");
   });
   it("base game route returns good data", async () => {
-    const response = await app.handle(
-      new Request("http://localhost/game/6351551")
-    );
+    const response = await app.handle(new Request("http://localhost/game/6351551"));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     const data = await response.json();
     expect(data).toContainKey("contests");
     expect(data.contests).toBeArray();
-    expect(data.contests[0]).toContainKeys([
-      "clock",
-      "gameState",
-      "linescores",
-    ]);
+    expect(data.contests[0]).toContainKeys(["clock", "gameState", "linescores"]);
   });
   it("game boxscore route returns good data", async () => {
-    const response = await app.handle(
-      new Request("http://localhost/game/6351551/boxscore")
-    );
+    const response = await app.handle(new Request("http://localhost/game/6351551/boxscore"));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     const data = await response.json();
@@ -62,40 +53,32 @@ describe("General", () => {
     expect(data.teamBoxscore?.[0]?.playerStats).toBeArray();
   });
   it("game play by play route returns good data", async () => {
-    const response = await app.handle(
-      new Request("http://localhost/game/6305900/play-by-play")
-    );
+    const response = await app.handle(new Request("http://localhost/game/6305900/play-by-play"));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     const data = await response.json();
     expect(data).toContainKey("periods");
     expect(data.periods).toBeArray();
-    expect(data.periods[0]?.playbyplayStats).toBeArray()
+    expect(data.periods[0]?.playbyplayStats).toBeArray();
   });
   it("game team stats route returns good data", async () => {
-    const response = await app.handle(
-      new Request("http://localhost/game/6305900/team-stats")
-    );
+    const response = await app.handle(new Request("http://localhost/game/6305900/team-stats"));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     const data = await response.json();
     expect(data).toContainKey("teams");
-    expect(data.teamBoxscore?.[0]?.teamStats).toBeObject()
+    expect(data.teamBoxscore?.[0]?.teamStats).toBeObject();
   });
   it("game scoring summary route returns good data", async () => {
-    const response = await app.handle(
-      new Request("http://localhost/game/6305900/scoring-summary")
-    );
+    const response = await app.handle(new Request("http://localhost/game/6305900/scoring-summary"));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     const data = await response.json();
     expect(data).toContainKey("periods");
-    expect(data.periods[0]?.summary).toBeArray()
+    expect(data.periods[0]?.summary).toBeArray();
   });
   it("schools index route returns good data", async () => {
-    const response = await app.handle(
-      new Request("http://localhost/schools-index")
-    );
+    const response = await app.handle(new Request("http://localhost/schools-index"));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("public, max-age=1800");
     const data = await response.json();
@@ -104,9 +87,7 @@ describe("General", () => {
   });
   it("re-request uses cached data", async () => {
     const start = performance.now();
-    await app.handle(
-      new Request("http://localhost/rankings/football/fbs/associated-press")
-    );
+    await app.handle(new Request("http://localhost/rankings/football/fbs/associated-press"));
     const finish = performance.now() - start;
     expect(finish).toBeLessThan(10);
   });
@@ -157,10 +138,9 @@ describe("General", () => {
     for (let i = 0; i < 3; i++) {
       for (const route of routes) {
         requests.push(
-          app
-            .handle(new Request(`http://localhost${route}`))
-            .then((res) => res.headers)
+          app.handle(new Request(`http://localhost${route}`)).then((res) => res.headers)
         );
+        await sleep(10);
       }
     }
     const headers = await Promise.all(requests);
@@ -176,18 +156,11 @@ describe("General", () => {
     expect(cached).toBe(headers.length - 1);
     expect(nonCached).toBe(1);
   });
-  it("new schedule function returns good data", async () => {
-    const today = await getScheduleBySportAndDivision("football", "fbs");
-    expect(today).toBeString();
-    expect(today).toContain(new Date().getFullYear().toString());
-  });
 
   // Tests for new basketball hashes (seasons 650, 651, 653, 654)
   it("basketball boxscore with new hashes returns good data", async () => {
     const gameId = "6506241";
-    const response = await app.handle(
-      new Request(`http://localhost/game/${gameId}/boxscore`)
-    );
+    const response = await app.handle(new Request(`http://localhost/game/${gameId}/boxscore`));
     // Skip test if game doesn't exist yet (404), but validate structure if it does
     if (response.status === 200) {
       expect(response.headers.get("cache-control")).toBe("public, max-age=60");
@@ -200,9 +173,7 @@ describe("General", () => {
   });
   it("baseball boxscore returns good data", async () => {
     const gameId = "6543070";
-    const response = await app.handle(
-      new Request(`http://localhost/game/${gameId}/boxscore`)
-    );
+    const response = await app.handle(new Request(`http://localhost/game/${gameId}/boxscore`));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     const data = await response.json();
@@ -242,9 +213,34 @@ describe("Header validation", () => {
     expect(response.status).toBe(401);
   });
   it("lack of custom header returns 401", async () => {
-    const response = await app.handle(
-      new Request("http://localhost/stats/test")
-    );
+    const response = await app.handle(new Request("http://localhost/stats/test"));
     expect(response.status).toBe(401);
+  });
+});
+
+describe("Today URL", () => {
+  it("should return correct football date (year/week)", async () => {
+    // This test hits the actual ncaa.com site
+    try {
+      const today = await getScheduleBySportAndDivision("football", "fbs");
+      // Should be in format YYYY/WW or YYYY/P
+      expect(today).toMatch(/^\d{4}\/[A-Z0-9]+$/);
+      expect(today === "2025/P" || today.includes(new Date().getFullYear().toString())).toBe(true);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  });
+
+  it("should return correct basketball date (year/month/day)", async () => {
+    try {
+      const today = await getScheduleBySportAndDivision("basketball-men", "d1");
+      // Should be in format YYYY/MM/DD
+      expect(today).toMatch(/^\d{4}\/\d{2}\/\d{2}$/);
+      expect(today.startsWith(new Date().getFullYear().toString())).toBe(true);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   });
 });

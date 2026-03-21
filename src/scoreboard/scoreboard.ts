@@ -62,7 +62,8 @@ export async function convertToOldFormat(
   newData: GraphQLResponse,
   sport: string,
   division: string,
-  date: string
+  date: string,
+  year: number
 ) {
   // Helper function to normalize game state to compatible values
   const normalizeGameState = (gameState: string): string => {
@@ -80,7 +81,7 @@ export async function convertToOldFormat(
 
   // Try to fetch old format data to get missing fields
   let oldFormatData: OldFormatData | null = null;
-  if (!sport.startsWith("basket") && !sport.startsWith("football")) {
+  if (year < 2025 && (!sport.startsWith("basket") && !sport.startsWith("football"))) {
     // basketball and football are always 404 (possibly all of them as of late 2025)
     try {
       // Format week with leading zero for old endpoint compatibility
