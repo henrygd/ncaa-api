@@ -337,7 +337,7 @@ export const openapiSpec = openapi({
           responses: {},
           summary: "Schedule",
           description:
-            "Game dates for a given sport and division. Most sports use `YYYY/MM`, but football uses `YYYY`.",
+            "> [!important]\n> Only for 2025 and earlier. Upstream source was discontinued. Try `schedule-alt`.\n\nGame dates for a given sport and division. Most sports use `YYYY/MM`, but football uses `YYYY`.",
           parameters: [
             {
               name: "sport",
@@ -358,6 +358,7 @@ export const openapiSpec = openapi({
               in: "path",
               schema: { type: "string" },
               required: true,
+              description: "YYYY for football, YYYY/MM for other sports.",
               examples: makeExamples(["2025", "2024/01"]),
             },
           ] as OpenAPIV3.ParameterObject[],
@@ -367,7 +368,7 @@ export const openapiSpec = openapi({
         get: {
           responses: {},
           summary: "Schedule (alt)",
-          description: "Game dates for a given sport and division and year",
+          description: "Game dates for a given sport and division and year.",
         },
         parameters: [
           {

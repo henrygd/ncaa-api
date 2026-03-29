@@ -424,10 +424,15 @@ export const app = new Elysia()
     }
   )
   // schedule route to retrieve game dates
-  .get("/schedule/:sport/:division/*", async ({ cache, cacheKey, params, status }) => {
-    const rest = decodeURIComponent(params["*"]);
+  .get("/schedule/:sport/:division/:year/:month?", async ({ cache, cacheKey, params, status }) => {
+    const yearInt = parseInt(params.year, 10);
+    if (Number.isNaN(yearInt) || yearInt < 1950 || yearInt > 2027) {
+      return status(404, "Resource not found");
+    }
+    const urlPathSegments = [params.sport, params.division, params.year, params.month]
+    const urlPath = urlPathSegments.filter(Boolean).join("/");
     const req = await fetch(
-      `https://data.ncaa.com/casablanca/schedule/${params.sport}/${params.division}/${rest}/schedule-all-conf.json`
+      `https://data.ncaa.com/casablanca/schedule/${urlPath}/schedule-all-conf.json`
     );
 
     if (!req.ok) {
