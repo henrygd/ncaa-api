@@ -128,16 +128,16 @@ export const openapiSpec = openapi({
           summary: "Game scoring summary",
           description:
             "Due to upstream changes, some seasons may not return data for game subroutes. Please open an issue if you encounter this.",
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              schema: { type: "number" },
+              required: true,
+              examples: makeExamples(["6459218", "6305900"]),
+            },
+          ] as OpenAPIV3.ParameterObject[],
         },
-        parameters: [
-          {
-            name: "id",
-            in: "path",
-            schema: { type: "number" },
-            required: true,
-            examples: makeExamples(["6459218", "6305900"]),
-          },
-        ] as OpenAPIV3.ParameterObject[],
       },
       "/game/{id}/team-stats": {
         get: {
@@ -145,16 +145,16 @@ export const openapiSpec = openapi({
           summary: "Game team stats",
           description:
             "Due to upstream changes, some seasons may not return data for game subroutes. Please open an issue if you encounter this.",
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              schema: { type: "number" },
+              required: true,
+              examples: makeExamples(["6459218", "6305900"]),
+            },
+          ] as OpenAPIV3.ParameterObject[],
         },
-        parameters: [
-          {
-            name: "id",
-            in: "path",
-            schema: { type: "number" },
-            required: true,
-            examples: makeExamples(["6459218", "6305900"]),
-          },
-        ] as OpenAPIV3.ParameterObject[],
       },
       "/stats/{sport}/{division}/{year}/{path}": {
         get: {
@@ -369,30 +369,30 @@ export const openapiSpec = openapi({
           responses: {},
           summary: "Schedule (alt)",
           description: "Game dates for a given sport and division and year.",
+          parameters: [
+            {
+              name: "sport",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: sportExamples,
+            },
+            {
+              name: "division",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: divisionExamples,
+            },
+            {
+              name: "year",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples(["2025", "2024"]),
+            },
+          ],
         },
-        parameters: [
-          {
-            name: "sport",
-            in: "path",
-            schema: { type: "string" },
-            required: true,
-            examples: sportExamples,
-          },
-          {
-            name: "division",
-            in: "path",
-            schema: { type: "string" },
-            required: true,
-            examples: divisionExamples,
-          },
-          {
-            name: "year",
-            in: "path",
-            schema: { type: "string" },
-            required: true,
-            examples: makeExamples(["2025", "2024"]),
-          },
-        ],
       },
       "/schools-index": {
         get: {
@@ -407,25 +407,25 @@ export const openapiSpec = openapi({
           responses: {},
           summary: "Logos",
           description: "Logos for all NCAA schools. Use the school `slug` or `team_seo` property.",
+          parameters: [
+            {
+              name: "school",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples(["michigan", "slippery-rock", "iowa"]),
+            },
+            {
+              name: "dark",
+              in: "query",
+              schema: { type: "string" },
+              required: false,
+              examples: makeExamples(["false", "true"]),
+              description:
+                "Set to `true` to get a version of the logo that works better on dark backgrounds.",
+            },
+          ],
         },
-        parameters: [
-          {
-            name: "school",
-            in: "path",
-            schema: { type: "string" },
-            required: true,
-            examples: makeExamples(["michigan", "slippery-rock", "iowa"]),
-          },
-          {
-            name: "dark",
-            in: "query",
-            schema: { type: "boolean" },
-            required: false,
-            examples: makeExamples(["false", "true"]),
-            description:
-              "Set to `true` to get a version of the logo that works better on dark backgrounds.",
-          },
-        ],
       },
     },
   },

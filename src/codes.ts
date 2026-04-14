@@ -175,7 +175,11 @@ export const getDivisionCode = (sport: string, division: string) => {
   if (!sportData) {
     throw errNotSupported(sport, division);
   }
-  return sportData.divisions[division as keyof typeof sportData.divisions] ?? division;
+  const code = sportData.divisions[division as keyof typeof sportData.divisions];
+  if (code === undefined) {
+    throw errNotSupported(sport, division);
+  }
+  return code;
 };
 
 export const supportedSports = Object.keys(newCodesBySport);
@@ -196,7 +200,7 @@ const errNotSupported = (sport: string, division: string) =>
  * This is more reliable than the today.json endpoint for football.
  */
 async function getDateFromScoreboardPage(sport: string, division: string): Promise<string | null> {
-  const response = await fetch(`https://www.ncaa.com/scoreboard/${sport}/${division}`);
+  const response = await fetch(`https://www.ncaa.com/scoreboard/${sport}/${division}`, { signal: AbortSignal.timeout(10000) });
   if (!response.ok) {
     return null;
   }
@@ -250,10 +254,10 @@ export async function getScheduleBySportAndDivision(sport: string, division: Div
     return todayScoreboardPage;
   }
 
-  const url = `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"a25ad021179ce1d97fb951a49954dc98da150089f9766e7e85890e439516ffbf"}}&queryName=NCAA_schedules_today_web&variables={"sportCode":"${sportData.code
-    }","division":${divisionCode},"seasonYear":${getSeasonYear(new Date())}}`;
+  const variables = { sportCode: sportData.code, division: divisionCode, seasonYear: getSeasonYear(new Date()) };
+  const url = `https://sdataprod.ncaa.com/?extensions=${encodeURIComponent(JSON.stringify({ persistedQuery: { version: 1, sha256Hash: "a25ad021179ce1d97fb951a49954dc98da150089f9766e7e85890e439516ffbf" } }))}&queryName=NCAA_schedules_today_web&variables=${encodeURIComponent(JSON.stringify(variables))}`;
 
-  const req = await fetch(url);
+  const req = await fetch(url, { signal: AbortSignal.timeout(10000) });
   if (!req.ok) {
     throw new Error(`Failed to fetch schedule: ${req.statusText}`);
   }
