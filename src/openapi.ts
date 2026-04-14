@@ -189,7 +189,33 @@ export const openapiSpec = openapi({
               in: "path",
               schema: { type: "string" },
               required: true,
+              description:
+                "Stat category path (e.g., `individual/5` for Goals Per Game). Use the `/stats-info/{sport}/{division}` endpoint to discover available paths.",
               examples: makeExamples(["individual/20", "team/28"]),
+            },
+          ] as OpenAPIV3.ParameterObject[],
+        },
+      },
+      "/stats-info/{sport}/{division}": {
+        get: {
+          responses: {},
+          summary: "Available stat paths",
+          description:
+            "Returns available stat categories (individual and team) for a given sport and division. Use the returned `path` values with the `/stats` endpoint.\n\nBacked by the same `<select>` dropdowns that NCAA.com renders on each stats landing page, so any sport/division combo that NCAA.com supports will work.\n\nhttps://www.ncaa.com/stats/soccer-men/d1",
+          parameters: [
+            {
+              name: "sport",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: sportExamples,
+            },
+            {
+              name: "division",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: divisionExamples,
             },
           ] as OpenAPIV3.ParameterObject[],
         },
