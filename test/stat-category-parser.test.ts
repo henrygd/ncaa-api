@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { parseHTML } from "linkedom";
-import { parseStatSelect } from "../src/stats/parser";
+import { parseStatSelect } from "../src/stats/stat-category-parser";
 
 describe("parseStatSelect", () => {
 	it("parses a standard NCAA stat dropdown", () => {
@@ -16,8 +16,8 @@ describe("parseStatSelect", () => {
 		const result = parseStatSelect(document, "select-container-individual", "individual");
 
 		expect(result).toEqual([
-			{ id: "5", label: "Goals Per Game", path: "individual/5" },
-			{ id: "6", label: "Assists Per Game", path: "individual/6" },
+			{ id: "5", name: "Goals Per Game", path: "individual/5" },
+			{ id: "6", name: "Assists Per Game", path: "individual/6" },
 		]);
 	});
 
@@ -41,7 +41,7 @@ describe("parseStatSelect", () => {
 		const result = parseStatSelect(document, "select-container-team", "team");
 
 		expect(result).toEqual([
-			{ id: "30", label: "Scoring Offense", path: "team/30" },
+			{ id: "30", name: "Scoring Offense", path: "team/30" },
 		]);
 	});
 
@@ -57,7 +57,7 @@ describe("parseStatSelect", () => {
 		const result = parseStatSelect(document, "select-container-individual", "individual");
 
 		expect(result).toEqual([
-			{ id: "10", label: "Saves Per Game", path: "individual/10" },
+			{ id: "10", name: "Saves Per Game", path: "individual/10" },
 		]);
 	});
 
@@ -74,7 +74,7 @@ describe("parseStatSelect", () => {
 		const result = parseStatSelect(document, "select-container-individual", "individual");
 
 		expect(result).toEqual([
-			{ id: "5", label: "Goals Per Game", path: "individual/5" },
+			{ id: "5", name: "Goals Per Game", path: "individual/5" },
 		]);
 	});
 

@@ -1,4 +1,11 @@
-import type { StatPathEntry } from "../types/stats";
+type StatPathEntry = {
+	/** Numeric ID from the NCAA.com URL (e.g., "421") */
+	id: string;
+	/** Human-readable stat name (e.g., "Goals") */
+	name: string;
+	/** Full path for use with the /stats endpoint (e.g., "individual/421") */
+	path: string;
+};
 
 /**
  * Extract stat path entries from a <select> element in an NCAA.com stat page.
@@ -23,24 +30,24 @@ export function parseStatSelect(
 
 	for (const option of select.options) {
 		const value = option.value?.trim();
-		const label = option.textContent?.trim();
+		const name = option.textContent?.trim();
 
 		// Skip empty/placeholder options (e.g., "Select an Individual Statistic")
-		if (!value || !label || /^select\b/i.test(label)) {
+		if (!value || !name || /^select\b/i.test(name)) {
 			continue;
 		}
 
 		// Extract the numeric ID from the URL
 		// e.g., /stats/soccer-men/d1/current/individual/421
-		const match = value.match(/\/current\/(individual|team)\/(\d+)/);
-		if (!match) {
+		const match = value.match(/\/current\/(?:individual|team)\/(\d+)/);
+		if (!match || !match[1]) {
 			continue;
 		}
 
 		entries.push({
-			id: match[2],
-			label,
-			path: `${pathType}/${match[2]}`,
+			id: match[1],
+			name: name,
+			path: `${pathType}/${match[1]}`,
 		});
 	}
 

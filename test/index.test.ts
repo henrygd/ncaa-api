@@ -196,21 +196,22 @@ describe("General", () => {
 describe("Stats info", () => {
   it("soccer-men/d1 returns individual and team stat paths", async () => {
     const response = await app.handle(
-      new Request("http://localhost/stats-info/soccer-men/d1")
+      new Request("http://localhost/stats/soccer-men/d1")
     );
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("public, max-age=86400");
     const data = await response.json();
+    expect(data).toContainKeys(["sport", "individual", "team"]);
     expect(data.individual).toBeArray();
     expect(data.team).toBeArray();
     expect(data.individual.length).toBeGreaterThan(0);
     expect(data.team.length).toBeGreaterThan(0);
-    expect(data.individual[0]).toContainKeys(["id", "label", "path"]);
-    expect(data.team[0]).toContainKeys(["id", "label", "path"]);
+    expect(data.individual[0]).toContainKeys(["id", "name", "path"]);
+    expect(data.team[0]).toContainKeys(["id", "name", "path"]);
   });
   it("works for non-soccer sports (basketball-men/d1)", async () => {
     const response = await app.handle(
-      new Request("http://localhost/stats-info/basketball-men/d1")
+      new Request("http://localhost/stats/basketball-men/d1")
     );
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -219,19 +220,19 @@ describe("Stats info", () => {
   });
   it("returns 404 for unknown sport", async () => {
     const response = await app.handle(
-      new Request("http://localhost/stats-info/curling/d1")
+      new Request("http://localhost/stats/curling/d1")
     );
     expect(response.status).toBe(404);
   });
   it("returns 404 for unknown division", async () => {
     const response = await app.handle(
-      new Request("http://localhost/stats-info/soccer-men/d99")
+      new Request("http://localhost/stats/soccer-men/d99")
     );
     expect(response.status).toBe(404);
   });
   it("cache hit on repeat request", async () => {
     const start = performance.now();
-    await app.handle(new Request("http://localhost/stats-info/soccer-men/d1"));
+    await app.handle(new Request("http://localhost/stats/soccer-men/d1"));
     const elapsed = performance.now() - start;
     expect(elapsed).toBeLessThan(10);
   });

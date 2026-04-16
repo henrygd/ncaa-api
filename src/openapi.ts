@@ -161,7 +161,7 @@ export const openapiSpec = openapi({
           responses: {},
           summary: "Stats",
           description:
-            "Stats for a given sport and division.\n\nhttps://www.ncaa.com/stats/football/fbs/current/individual/20\n\nhttps://www.ncaa.com/stats/football/fbs/2024/team/28",
+            "Stats for a given sport, division, and category.\n\nhttps://www.ncaa.com/stats/football/fbs/current/individual/20\n\nhttps://www.ncaa.com/stats/football/fbs/2024/team/28",
           parameters: [
             {
               name: "sport",
@@ -183,6 +183,7 @@ export const openapiSpec = openapi({
               schema: { type: "string" },
               required: true,
               examples: makeExamples(["current"]),
+              description: "Use `current` for the current season, or specify a year (e.g., `2024`).",
             },
             {
               name: "path",
@@ -190,18 +191,18 @@ export const openapiSpec = openapi({
               schema: { type: "string" },
               required: true,
               description:
-                "Stat category path (e.g., `individual/5` for Goals Per Game). Use the `/stats-info/{sport}/{division}` endpoint to discover available paths.",
+                "Stat category path (e.g., `individual/5`). Omit `year` and `path` to return a list of available stats.",
               examples: makeExamples(["individual/20", "team/28"]),
             },
           ] as OpenAPIV3.ParameterObject[],
         },
       },
-      "/stats-info/{sport}/{division}": {
+      "/stats/{sport}/{division}": {
         get: {
           responses: {},
-          summary: "Available stat paths",
+          summary: "Stat categories",
           description:
-            "Returns available stat categories (individual and team) for a given sport and division. Use the returned `path` values with the `/stats` endpoint.\n\nBacked by the same `<select>` dropdowns that NCAA.com renders on each stats landing page, so any sport/division combo that NCAA.com supports will work.\n\nhttps://www.ncaa.com/stats/soccer-men/d1",
+            "Returns a list of available stat categories (individual and team) for a given sport and division. Add `year` and `path` to fetch specific stats.",
           parameters: [
             {
               name: "sport",

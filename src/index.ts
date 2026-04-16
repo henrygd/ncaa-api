@@ -13,7 +13,7 @@ import {
   teamStatsHashes,
 } from "./codes";
 import { openapiSpec } from "./openapi";
-import { parseStatSelect } from "./stats/parser";
+import { parseStatSelect } from "./stats/stat-category-parser";
 import {
   convertToOldFormat,
   fetchGqlScoreboard,
@@ -36,7 +36,6 @@ const cache_24h = new ExpiryMap(24 * 60 * 60 * 1000);
 // valid routes for the app with their respective caches
 const validRoutes = new Map([
   ["stats", cache_30m],
-  ["stats-info", cache_24h],
   ["rankings", cache_30m],
   ["standings", cache_30m],
   ["history", cache_30m],
@@ -116,8 +115,7 @@ export const app = new Elysia()
   })
   .onBeforeHandle(({ set, cache, cacheKey }) => {
     set.headers["Content-Type"] = "application/json";
-    const maxAge = cache === cache_45s ? 60 : cache === cache_24h ? 86400 : 1800;
-    set.headers["Cache-Control"] = `public, max-age=${maxAge}`;
+    set.headers["Cache-Control"] = `public, max-age=${cache === cache_45s ? 60 : 1800}`;
     if (cache.has(cacheKey)) {
       return cache.get(cacheKey);
     }
@@ -597,15 +595,17 @@ export const app = new Elysia()
   },
     { detail: { hide: true } }
   )
-  // stats-info route to return available stat paths for a sport/division
-  .get("/stats-info/:sport/:division", async ({ params, cache, cacheKey, status }) => {
+  // stats route to return available stat categories for a sport/division
+  .get("/stats/:sport/:division", async ({ params, cacheKey, status, set }) => {
+    const cache = cache_24h;
+    set.headers["Cache-Control"] = `public, max-age=86400`;
     if (cache.has(cacheKey)) {
       return cache.get(cacheKey);
     }
     const url = `https://www.ncaa.com/stats/${params.sport}/${params.division}`;
     const res = await fetch(url);
     if (!res.ok) {
-      return status(404, "Stats info not found for this sport/division");
+      return status(404, "Stats not found for this sport/division");
     }
     const { document } = parseHTML(await res.text());
     const individual = parseStatSelect(document, "select-container-individual", "individual");
@@ -613,7 +613,8 @@ export const app = new Elysia()
     if (individual.length === 0 && team.length === 0) {
       return status(404, "No stat categories found for this sport/division");
     }
-    const data = JSON.stringify({ individual, team });
+    const sport = document.querySelector("h2.page-title")?.textContent?.trim() ?? params.sport;
+    const data = JSON.stringify({ sport, individual, team });
     cache.set(cacheKey, data);
     return data;
   },
