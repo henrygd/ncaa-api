@@ -13,6 +13,7 @@ import {
   teamStatsHashes,
 } from "./codes";
 import { openapiSpec } from "./openapi";
+import { parseStatSelect } from "./stats/stat-category-parser";
 import {
   convertToOldFormat,
   fetchGqlScoreboard,
@@ -25,6 +26,9 @@ const cache_30m = new ExpiryMap(30 * 60 * 1000);
 
 // 45 second cache for scores
 const cache_45s = new ExpiryMap(1 * 45 * 1000);
+
+// 24 hour cache for stat metadata (stat paths rarely change)
+const cache_24h = new ExpiryMap(24 * 60 * 60 * 1000);
 
 // 5 minute cache for brackets
 // const cache_5m = new ExpiryMap(5 * 60 * 1000);
@@ -588,6 +592,31 @@ export const app = new Elysia()
     } finally {
       semCacheKey.release();
     }
+  },
+    { detail: { hide: true } }
+  )
+  // stats route to return available stat categories for a sport/division
+  .get("/stats/:sport/:division", async ({ params, cacheKey, status, set }) => {
+    const cache = cache_24h;
+    set.headers["Cache-Control"] = `public, max-age=86400`;
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
+    const url = `https://www.ncaa.com/stats/${params.sport}/${params.division}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      return status(404, "Stats not found for this sport/division");
+    }
+    const { document } = parseHTML(await res.text());
+    const individual = parseStatSelect(document, "select-container-individual", "individual");
+    const team = parseStatSelect(document, "select-container-team", "team");
+    if (individual.length === 0 && team.length === 0) {
+      return status(404, "No stat categories found for this sport/division");
+    }
+    const sport = document.querySelector("h2.page-title")?.textContent?.trim() ?? params.sport;
+    const data = JSON.stringify({ sport, individual, team });
+    cache.set(cacheKey, data);
+    return data;
   },
     { detail: { hide: true } }
   )
