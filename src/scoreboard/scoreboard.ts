@@ -17,9 +17,9 @@ const instance_id = createHash("md5").digest("hex");
  * Fetch scoreboard data from new NCAA GraphQL endpoint
  */
 export async function fetchGqlScoreboard(params: NewScoreboardParams) {
-  const url = `https://sdataprod.ncaa.com/?extensions={"persistedQuery":{"version":1,"sha256Hash":"7287cda610a9326931931080cb3a604828febe6fe3c9016a7e4a36db99efdb7c"}}&variables=${JSON.stringify(params)}`;
+  const url = `https://sdataprod.ncaa.com/?extensions=${encodeURIComponent(JSON.stringify({ persistedQuery: { version: 1, sha256Hash: "7287cda610a9326931931080cb3a604828febe6fe3c9016a7e4a36db99efdb7c" } }))}&variables=${encodeURIComponent(JSON.stringify(params))}`;
 
-  const req = await fetch(url);
+  const req = await fetch(url, { signal: AbortSignal.timeout(10000) });
   if (!req.ok) {
     throw new Error("Failed to fetch football scoreboard data");
   }
@@ -86,7 +86,7 @@ export async function convertToOldFormat(
     try {
       // Format week with leading zero for old endpoint compatibility
       const oldUrl = `https://data.ncaa.com/casablanca/scoreboard/${sport}/${division}/${date}/scoreboard.json`;
-      const oldResponse = await fetch(oldUrl);
+      const oldResponse = await fetch(oldUrl, { signal: AbortSignal.timeout(10000) });
       if (oldResponse.ok) {
         oldFormatData = await oldResponse.json();
       } else {
@@ -202,15 +202,7 @@ export async function convertToOldFormat(
         contestClock: contest.contestClock || "0:00",
         bracketId: contest.bracketId || "",
         bracketRound: contest.roundNumber || "",
-        // bracketRegion: "",
-        // videoState: "",
-        // contestName: contest.teams
-        //   ? `${awayTeam.nameShort || ""} at ${homeTeam.nameShort || ""}`
-        //   : "",
       };
-      // if (contest.roundDescription) {
-      //   game.roundDescription = contest.roundDescription;
-      // }
       if (contest.championshipId) {
         game.championshipId = contest.championshipId;
       }
