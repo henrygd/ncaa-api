@@ -311,6 +311,7 @@ export const openapiSpec = openapi({
                 "fieldhockey-women",
                 "lacrosse-men",
                 "lacrosse-women",
+                "beach-volleyball",
               ]),
             },
             {
