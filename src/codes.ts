@@ -119,6 +119,12 @@ export const newCodesBySport: Record<
       d3: 3,
     },
   },
+  "beach-volleyball": {
+    code: "WSV",
+    divisions: {
+      d1: 1,
+    },
+  },
   "lacrosse-men": {
     code: "MLA",
     divisions: {
