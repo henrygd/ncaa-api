@@ -161,7 +161,7 @@ export const openapiSpec = openapi({
           responses: {},
           summary: "Stats",
           description:
-            "Stats for a given sport and division.\n\nhttps://www.ncaa.com/stats/football/fbs/current/individual/20\n\nhttps://www.ncaa.com/stats/football/fbs/2024/team/28",
+            "Stats for a given sport, division, and category.\n\nhttps://www.ncaa.com/stats/football/fbs/current/individual/20\n\nhttps://www.ncaa.com/stats/football/fbs/2024/team/28",
           parameters: [
             {
               name: "sport",
@@ -183,13 +183,40 @@ export const openapiSpec = openapi({
               schema: { type: "string" },
               required: true,
               examples: makeExamples(["current"]),
+              description: "Use `current` for the current season, or specify a year (e.g., `2024`).",
             },
             {
               name: "path",
               in: "path",
               schema: { type: "string" },
               required: true,
+              description:
+                "Stat category path (e.g., `individual/5`). Omit `year` and `path` to return a list of available stats.",
               examples: makeExamples(["individual/20", "team/28"]),
+            },
+          ] as OpenAPIV3.ParameterObject[],
+        },
+      },
+      "/stats/{sport}/{division}": {
+        get: {
+          responses: {},
+          summary: "Stat categories",
+          description:
+            "Returns a list of available stat categories (individual and team) for a given sport and division. Add `year` and `path` to fetch specific stats.",
+          parameters: [
+            {
+              name: "sport",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: sportExamples,
+            },
+            {
+              name: "division",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: divisionExamples,
             },
           ] as OpenAPIV3.ParameterObject[],
         },
@@ -284,6 +311,7 @@ export const openapiSpec = openapi({
                 "fieldhockey-women",
                 "lacrosse-men",
                 "lacrosse-women",
+                "beach-volleyball",
               ]),
             },
             {

@@ -13,6 +13,7 @@ import {
   teamStatsHashes,
 } from "./codes";
 import { openapiSpec } from "./openapi";
+import { parseStatSelect } from "./stats/stat-category-parser";
 import {
   convertToOldFormat,
   fetchGqlScoreboard,
@@ -25,6 +26,12 @@ const cache_30m = new ExpiryMap(30 * 60 * 1000);
 
 // 45 second cache for scores
 const cache_45s = new ExpiryMap(1 * 45 * 1000);
+
+// 24 hour cache for stat metadata (stat paths rarely change)
+const cache_24h = new ExpiryMap(24 * 60 * 60 * 1000);
+
+// 5 minute cache for brackets
+// const cache_5m = new ExpiryMap(5 * 60 * 1000);
 
 // valid routes for the app with their respective caches
 const validRoutes = new Map([
@@ -495,6 +502,10 @@ export const app = new Elysia()
   )
   // scoreboard route to fetch data from data.ncaa.com json endpoint
   .get("/scoreboard/:sport/*", async ({ cache, cacheKey, params, set, status }) => {
+    const sportCodes = newCodesBySport[params.sport];
+    if (!sportCodes) {
+      return status(400, { "message": "Invalid sport" });
+    }
     const semCacheKey = getSemaphore(cacheKey);
     await semCacheKey.acquire();
     try {
@@ -506,6 +517,10 @@ export const app = new Elysia()
       // Parse URL path to extract year and week parameters
       const rest = decodeURIComponent(params["*"]);
       const [division, year] = rest.split("/");
+
+      if (sportCodes.divisions[division] === undefined) {
+        return status(400, { "message": "Invalid division" });
+      }
 
       // find date in url
       const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/;
@@ -535,9 +550,9 @@ export const app = new Elysia()
       const effectiveYear = yearFromUrlDate || parseInt(year, 10) || new Date().getFullYear();
 
 
-      if (params.sport in newCodesBySport) {
+      const sportCode = sportCodes.code;
+      if (sportCode) {
         try {
-          const sportCode = newCodesBySport[params.sport].code;
           // Check week-based cache first for shared caching
           const weekCacheKey = `${sportCode}_${division}_${urlDate}`;
           if (cache.has(weekCacheKey)) {
@@ -593,7 +608,10 @@ export const app = new Elysia()
         }
       }
 
-      // Use old endpoint logic
+      // Use old endpoint logic - only supports 2025 and earlier
+      if (effectiveYear > 2025) {
+        return status(404, { "message": "Resource not found" });
+      }
       const url = `https://data.ncaa.com/casablanca/scoreboard/${params.sport}/${division}/${urlDate}/scoreboard.json`;
 
       const semUrl = getSemaphore(url);
@@ -607,7 +625,7 @@ export const app = new Elysia()
         // fetch data
         const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) {
-          return status(404, "Resource not found");
+          return status(404, { "message": "Resource not found" });
         }
         const data = JSON.stringify(await res.json());
         cache.set(cacheKey, data);
@@ -619,6 +637,31 @@ export const app = new Elysia()
     } finally {
       semCacheKey.release();
     }
+  },
+    { detail: { hide: true } }
+  )
+  // stats route to return available stat categories for a sport/division
+  .get("/stats/:sport/:division", async ({ params, cacheKey, status, set }) => {
+    const cache = cache_24h;
+    set.headers["Cache-Control"] = `public, max-age=86400`;
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
+    const url = `https://www.ncaa.com/stats/${params.sport}/${params.division}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      return status(404, "Stats not found for this sport/division");
+    }
+    const { document } = parseHTML(await res.text());
+    const individual = parseStatSelect(document, "select-container-individual", "individual");
+    const team = parseStatSelect(document, "select-container-team", "team");
+    if (individual.length === 0 && team.length === 0) {
+      return status(404, "No stat categories found for this sport/division");
+    }
+    const sport = document.querySelector("h2.page-title")?.textContent?.trim() ?? params.sport;
+    const data = JSON.stringify({ sport, individual, team });
+    cache.set(cacheKey, data);
+    return data;
   },
     { detail: { hide: true } }
   )

@@ -31,7 +31,7 @@ export const teamStatsHashes = {
 
 export const newCodesBySport: Record<
   string,
-  { code: string; divisions: Record<string, number>; metas?: Record<string, string> }
+  { code: string; divisions: Record<string, number>; }
 > = {
   ////// FALL SPORTS //////
   football: {
@@ -119,6 +119,12 @@ export const newCodesBySport: Record<
       d3: 3,
     },
   },
+  "beach-volleyball": {
+    code: "WSV",
+    divisions: {
+      d1: 1,
+    },
+  },
   "lacrosse-men": {
     code: "MLA",
     divisions: {
@@ -137,6 +143,22 @@ export const newCodesBySport: Record<
   },
   softball: {
     code: "WSB",
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  "tennis-men": {
+    code: "", // tennis does not support scoreboard API
+    divisions: {
+      d1: 1,
+      d2: 2,
+      d3: 3,
+    },
+  },
+  "tennis-women": {
+    code: "", // tennis does not support scoreboard API
     divisions: {
       d1: 1,
       d2: 2,
