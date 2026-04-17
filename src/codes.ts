@@ -123,7 +123,6 @@ export const newCodesBySport: Record<
     code: "WSV",
     divisions: {
       d1: 1,
-      nc: 0,
     },
   },
   "lacrosse-men": {
@@ -193,7 +192,7 @@ export const supportedDivisions = [
 ] as const;
 
 // Define division type as union of all possible division keys
-export type DivisionKey = "fbs" | "fcs" | "d1" | "d2" | "d3" | "nc";
+export type DivisionKey = "fbs" | "fcs" | "d1" | "d2" | "d3";
 
 const errNotSupported = (sport: string, division: string) =>
   new Error(`${sport} ${division} is not supported`);
