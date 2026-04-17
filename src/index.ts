@@ -473,6 +473,10 @@ export const app = new Elysia()
   )
   // scoreboard route to fetch data from data.ncaa.com json endpoint
   .get("/scoreboard/:sport/*", async ({ cache, cacheKey, params, set, status }) => {
+    const sportCodes = newCodesBySport[params.sport];
+    if (!sportCodes) {
+      return status(400, { "message": "Invalid sport" });
+    }
     const semCacheKey = getSemaphore(cacheKey);
     await semCacheKey.acquire();
     try {
@@ -484,6 +488,10 @@ export const app = new Elysia()
       // Parse URL path to extract year and week parameters
       const rest = decodeURIComponent(params["*"]);
       const [division, year] = rest.split("/");
+
+      if (sportCodes.divisions[division] === undefined) {
+        return status(400, { "message": "Invalid division" });
+      }
 
       // find date in url
       const urlDateMatcher = /(\d{4}\/\d{2}\/\d{2})|(\d{4}\/(\d{2}|P))/;
@@ -508,9 +516,9 @@ export const app = new Elysia()
       const effectiveYear = yearFromUrlDate || parseInt(year, 10) || new Date().getFullYear();
 
 
-      if (params.sport in newCodesBySport) {
+      const sportCode = sportCodes.code;
+      if (sportCode) {
         try {
-          const sportCode = newCodesBySport[params.sport].code;
           // Check week-based cache first for shared caching
           const weekCacheKey = `${sportCode}_${division}_${urlDate}`;
           if (cache.has(weekCacheKey)) {
@@ -566,7 +574,10 @@ export const app = new Elysia()
         }
       }
 
-      // Use old endpoint logic
+      // Use old endpoint logic - only supports 2025 and earlier
+      if (effectiveYear > 2025) {
+        return status(404, { "message": "Resource not found" });
+      }
       const url = `https://data.ncaa.com/casablanca/scoreboard/${params.sport}/${division}/${urlDate}/scoreboard.json`;
 
       const semUrl = getSemaphore(url);
@@ -580,7 +591,7 @@ export const app = new Elysia()
         // fetch data
         const res = await fetch(url);
         if (!res.ok) {
-          return status(404, "Resource not found");
+          return status(404, { "message": "Resource not found" });
         }
         const data = JSON.stringify(await res.json());
         cache.set(cacheKey, data);
