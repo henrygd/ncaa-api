@@ -2,7 +2,7 @@
 
 export interface NewScoreboardParams {
   sportCode: string;
-  division: number;
+  division: number | string;
   seasonYear: number;
   week?: number;
   contestDate?: string;

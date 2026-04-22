@@ -20,18 +20,17 @@ import {
   fetchPlayoffScoreboard,
 } from "./scoreboard/scoreboard";
 import type { NewScoreboardParams } from "./scoreboard/types";
+import * as v from 'valibot';
+import { validDivisions, validGameIds, validScoreboardSports, validSports, validYears } from "./schema";
 
 // 30 minute cache for most routes
 const cache_30m = new ExpiryMap(30 * 60 * 1000);
 
-// 45 second cache for scores
+// 45 second cache for scores / brackets
 const cache_45s = new ExpiryMap(1 * 45 * 1000);
 
 // 24 hour cache for stat metadata (stat paths rarely change)
 const cache_24h = new ExpiryMap(24 * 60 * 60 * 1000);
-
-// 5 minute cache for brackets
-// const cache_5m = new ExpiryMap(5 * 60 * 1000);
 
 // valid routes for the app with their respective caches
 const validRoutes = new Map([
@@ -45,7 +44,7 @@ const validRoutes = new Map([
   ["scoreboard", cache_45s],
   ["schedule-alt", cache_30m],
   ["news", cache_30m],
-  ["brackets", cache_45s] // make this 45s during the tournament
+  ["brackets", cache_45s]
 ]);
 
 /** log message to console with timestamp */
@@ -59,11 +58,17 @@ function log(str: string) {
 
 export const app = new Elysia()
   .use(openapiSpec)
-  .onError(({ error, code }) => {
-    if (code === "VALIDATION") return error.detail(error.message);
+  // .onError(({ error, code }) => {
+  //   if (code === "VALIDATION") return error.detail(error.message);
+  // })
+  .guard({
+    detail: { hide: true },
+    query: v.object({
+      page: v.optional(v.pipe(v.string(), v.toNumber(), v.minValue(1), v.maxValue(20))),
+    }),
   })
   // redirect index to github page
-  .get("/", ({ redirect }) => redirect("/openapi"), { detail: { hide: true } })
+  .get("/", ({ redirect }) => redirect("/openapi"))
   // fetch and return logo svg
   .get("/logo/:school", async ({ params: { school }, query: { dark }, set, status }) => {
     const bgParam = dark !== undefined && dark !== "false" ? "bgd" : "bgl";
@@ -83,7 +88,11 @@ export const app = new Elysia()
       return status(500, "Error fetching data");
     }
   },
-    { detail: { hide: true } }
+    {
+      query: v.object({
+        dark: v.optional(v.picklist(["true", "false"])),
+      }),
+    }
   )
   // validate request / set cache key
   .resolve(({ request, path, query: { page }, status }) => {
@@ -93,10 +102,6 @@ export const app = new Elysia()
       request.headers.get("x-ncaa-key") !== process.env.NCAA_HEADER_KEY
     ) {
       return status(401);
-    }
-    // check that page param is an int
-    if (page && !/^\d+$/.test(page)) {
-      return status(400, "Page parameter must be an integer");
     }
     // check that resource is valid
     const basePath = path.split("/")[1];
@@ -108,9 +113,8 @@ export const app = new Elysia()
       path = path.replace("/all-conf", "");
     }
     return {
-      basePath,
       cache: validRoutes.get(basePath) ?? cache_45s,
-      cacheKey: path + (page ?? ""),
+      cacheKey: page ? `${path}?page=${page}` : path,
     };
   })
   .onBeforeHandle(({ set, cache, cacheKey }) => {
@@ -135,9 +139,7 @@ export const app = new Elysia()
     } catch (_) {
       return status(500, "Error fetching data");
     }
-  },
-    { detail: { hide: true } }
-  )
+  })
   // news route to fetch and parse RSS feed
   .get("/news/:sport/:division", async ({ params, cache, cacheKey, status }) => {
     if (cache.has(cacheKey)) {
@@ -212,11 +214,14 @@ export const app = new Elysia()
     } catch (_) {
       return status(500, "Error parsing RSS feed");
     }
-  },
-    { detail: { hide: true } }
-  )
+  })
   .group("/game", (app) =>
     app
+      .guard({
+        params: v.object({
+          id: validGameIds
+        })
+      })
       // game route to retrieve game details
       .get("/:id", async ({ cache, cacheKey, status, params: { id } }) => {
         const req = await fetch(
@@ -228,14 +233,7 @@ export const app = new Elysia()
         const data = JSON.stringify((await req.json())?.data);
         cache.set(cacheKey, data);
         return data;
-      },
-        {
-          detail: { hide: true },
-          params: t.Object({
-            id: t.Number({ minimum: 999999, maximum: 99999999 }),
-          }),
-        }
-      )
+      })
       .get("/:id/boxscore", async ({ cache, cacheKey, status, params: { id } }) => {
         const hashes = [boxscoreHashes.TeamStatsBasketball];
         for (const hash of hashes) {
@@ -266,14 +264,7 @@ export const app = new Elysia()
           return data;
         }
         return status(502, "Error fetching data");
-      },
-        {
-          detail: { hide: true },
-          params: t.Object({
-            id: t.Number({ minimum: 999999, maximum: 99999999 }),
-          }),
-        }
-      )
+      })
       .get("/:id/play-by-play", async ({ cache, cacheKey, status, params: { id } }) => {
         const hashes = [playByPlayHashes.PlayByPlayGenericSport];
         for (const hash of hashes) {
@@ -305,14 +296,7 @@ export const app = new Elysia()
           return data;
         }
         return status(502, "Error fetching data");
-      },
-        {
-          detail: { hide: true },
-          params: t.Object({
-            id: t.Number({ minimum: 999999, maximum: 99999999 }),
-          }),
-        }
-      )
+      })
       .get("/:id/scoring-summary", async ({ cache, cacheKey, status, params: { id } }) => {
         const hash = "7f86673d4875cd18102b7fa598e2bc5da3f49d05a1c15b1add0e2367ee890198";
         const req = await fetch(
@@ -327,14 +311,7 @@ export const app = new Elysia()
           }
         }
         return status(502, "Error fetching data");
-      },
-        {
-          detail: { hide: true },
-          params: t.Object({
-            id: t.Number({ minimum: 999999, maximum: 99999999 }),
-          }),
-        }
-      )
+      })
       .get("/:id/team-stats", async ({ cache, cacheKey, status, params: { id } }) => {
         const hashes = [teamStatsHashes.TeamStatsBasketball];
         for (const hash of hashes) {
@@ -365,14 +342,7 @@ export const app = new Elysia()
           return data;
         }
         return status(502, "Error fetching data");
-      },
-        {
-          detail: { hide: true },
-          params: t.Object({
-            id: t.Number({ minimum: 999999, maximum: 99999999 }),
-          }),
-        }
-      )
+      })
   )
   // brackets route to retrieve tournament brackets
   .get("/brackets/:sport/:division/:year", async ({ cache, cacheKey, params, status }) => {
@@ -386,7 +356,7 @@ export const app = new Elysia()
     const variables = {
       sportUrl: params.sport,
       division: Number(divisionCode),
-      year: parseInt(params.year, 10),
+      year: params.year,
       // showUnstaged: false,
       // staticTestEnv: null,
     };
@@ -419,20 +389,15 @@ export const app = new Elysia()
     }
   },
     {
-      detail: { hide: true },
-      params: t.Object({
-        sport: t.String(),
-        division: t.String(),
-        year: t.String(),
+      params: v.object({
+        sport: validSports,
+        division: validDivisions,
+        year: validYears,
       }),
     }
   )
   // schedule route to retrieve game dates
   .get("/schedule/:sport/:division/:year/:month?", async ({ cache, cacheKey, params, status }) => {
-    const yearInt = parseInt(params.year, 10);
-    if (Number.isNaN(yearInt) || yearInt < 1950 || yearInt > 2027) {
-      return status(404, "Resource not found");
-    }
     const urlPathSegments = [params.sport, params.division, params.year, params.month]
     const urlPath = urlPathSegments.filter(Boolean).join("/");
     const req = await fetch(
@@ -446,9 +411,14 @@ export const app = new Elysia()
     const data = JSON.stringify(await req.json());
     cache.set(cacheKey, data);
     return data;
-  },
-    { detail: { hide: true } }
-  )
+  }, {
+    params: v.object({
+      sport: validSports,
+      division: validDivisions,
+      year: validYears,
+      month: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(12))),
+    })
+  })
   .get("/schedule-alt/:sport/:division/:year", async ({ cache, cacheKey, params, status }) => {
     const sportCode = newCodesBySport[params.sport as keyof typeof newCodesBySport].code;
     if (!sportCode) {
@@ -468,9 +438,13 @@ export const app = new Elysia()
     const data = JSON.stringify(await req.json());
     cache.set(cacheKey, data);
     return data;
-  },
-    { detail: { hide: true } }
-  )
+  }, {
+    params: v.object({
+      sport: validSports,
+      division: validDivisions,
+      year: validYears,
+    })
+  })
   // scoreboard route to fetch data from data.ncaa.com json endpoint
   .get("/scoreboard/:sport/*", async ({ cache, cacheKey, params, set, status }) => {
     const sportCodes = newCodesBySport[params.sport];
@@ -486,10 +460,10 @@ export const app = new Elysia()
       }
 
       // Parse URL path to extract year and week parameters
-      const rest = decodeURIComponent(params["*"]);
+      const rest = decodeURIComponent(params["*"] ?? "");
       const [division, year] = rest.split("/");
 
-      if (sportCodes.divisions[division] === undefined) {
+      if (sportCodes.divisions?.[division] === undefined) {
         return status(400, { "message": "Invalid division" });
       }
 
@@ -603,9 +577,12 @@ export const app = new Elysia()
     } finally {
       semCacheKey.release();
     }
-  },
-    { detail: { hide: true } }
-  )
+  }, {
+    params: v.object({
+      sport: validScoreboardSports,
+      "*": v.optional(v.string()),
+    })
+  })
   // stats route to return available stat categories for a sport/division
   .get("/stats/:sport/:division", async ({ params, cacheKey, status, set }) => {
     const cache = cache_24h;
@@ -628,21 +605,46 @@ export const app = new Elysia()
     const data = JSON.stringify({ sport, individual, team });
     cache.set(cacheKey, data);
     return data;
-  },
-    { detail: { hide: true } }
-  )
+  }, {
+    params: v.object({
+      sport: validScoreboardSports,
+      division: validDivisions,
+    }),
+  })
   // all other routes fetch data by scraping ncaa.com
-  .get("/*", async ({ query: { page }, path, cache, cacheKey }) => {
-    if (cache.has(cacheKey)) {
-      return cache.get(cacheKey);
-    }
-    // fetch data
-    const data = JSON.stringify(await getData({ path, page }));
-    cache.set(cacheKey, data);
-    return data;
-  },
-    { detail: { hide: true } }
-  )
+  .group("/:base/:sport/:division", (app) =>
+    app
+      .guard({
+        params: v.object({
+          base: v.picklist(["standings", "rankings", "history", "stats"]),
+          sport: validSports,
+          division: validDivisions,
+        }),
+      })
+      .get("/", async ({ query: { page }, path, cache, cacheKey }) => {
+        if (cache.has(cacheKey)) {
+          return cache.get(cacheKey);
+        }
+        // fetch data
+        const data = JSON.stringify(await getData({ path, page }));
+        cache.set(cacheKey, data);
+        return data;
+      })
+      .get("/*", async ({ query: { page }, path, cache, cacheKey }) => {
+        if (cache.has(cacheKey)) {
+          return cache.get(cacheKey);
+        }
+        // fetch data
+        const data = JSON.stringify(await getData({ path, page }));
+        cache.set(cacheKey, data);
+        return data;
+      },
+        {
+          params: v.object({
+            "*": v.optional(v.string()),
+          }),
+        }
+      ))
   .listen(3000);
 
 log(`Server is running at ${app.server?.url}`);

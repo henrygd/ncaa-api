@@ -1,7 +1,7 @@
 import openapi from "@elysiajs/openapi";
 import type { OpenAPIV3 } from "openapi-types";
 
-import { supportedDivisions, supportedSports } from "./codes";
+import { newCodesBySport, supportedDivisions, supportedSports } from "./codes";
 import { version } from "../package.json";
 
 function makeExamples(strings: string[]) {
@@ -15,6 +15,8 @@ function makeExamples(strings: string[]) {
 }
 
 const sportExamples = makeExamples(supportedSports);
+
+const scoreboardSportsExamples = makeExamples(supportedSports.filter(sport => newCodesBySport[sport]?.code));
 
 const divisionExamples = makeExamples(Object.values(supportedDivisions));
 
@@ -60,7 +62,7 @@ export const openapiSpec = openapi({
               in: "path",
               schema: { type: "string" },
               required: true,
-              examples: sportExamples,
+              examples: scoreboardSportsExamples,
             },
             {
               name: "path",
@@ -168,7 +170,7 @@ export const openapiSpec = openapi({
               in: "path",
               schema: { type: "string" },
               required: true,
-              examples: sportExamples,
+              examples: scoreboardSportsExamples,
             },
             {
               name: "division",
@@ -209,6 +211,62 @@ export const openapiSpec = openapi({
               in: "path",
               schema: { type: "string" },
               required: true,
+              examples: scoreboardSportsExamples,
+            },
+            {
+              name: "division",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: divisionExamples,
+            },
+          ] as OpenAPIV3.ParameterObject[],
+        },
+      },
+      "/standings/{sport}/{division}/{conference}": {
+        get: {
+          responses: {},
+          summary: "Standings",
+          description:
+            "Standings for a given sport, division, and optionally conference.\n\nhttps://www.ncaa.com/standings/football/fbs\n\nhttps://www.ncaa.com/standings/football/fbs/big-ten",
+          parameters: [
+            {
+              name: "sport",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: sportExamples,
+            },
+            {
+              name: "division",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: divisionExamples,
+            },
+            {
+              name: "conference",
+              in: "path",
+              schema: { type: "string" },
+              required: false,
+              examples: makeExamples(["big-ten", "sec"]),
+              description: "Optional. Omit to return standings for all conferences.",
+            },
+          ],
+        },
+      },
+      "/history/{sport}/{division}": {
+        get: {
+          responses: {},
+          summary: "History",
+          description:
+            "Championship history for a given sport.\n\nhttps://www.ncaa.com/history/bowling/nc",
+          parameters: [
+            {
+              name: "sport",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
               examples: sportExamples,
             },
             {
@@ -221,12 +279,12 @@ export const openapiSpec = openapi({
           ] as OpenAPIV3.ParameterObject[],
         },
       },
-      "/standings/{sport}/{path}": {
+      "/rankings/{sport}/{division}/{ranking}": {
         get: {
           responses: {},
-          summary: "Standings",
+          summary: "Rankings",
           description:
-            "Standings for a given sport and division.\n\nhttps://www.ncaa.com/standings/football/fbs\n\nhttps://www.ncaa.com/standings/basketball-women/d1/asun",
+            "Rankings for a given sport.\n\nhttps://www.ncaa.com/rankings/football/fbs/associated-press",
           parameters: [
             {
               name: "sport",
@@ -236,48 +294,20 @@ export const openapiSpec = openapi({
               examples: sportExamples,
             },
             {
-              name: "path",
+              name: "division",
               in: "path",
               schema: { type: "string" },
               required: true,
-              examples: makeExamples(["fbs", "fbs/big-ten", "d1/asun"]),
+              examples: divisionExamples,
             },
-          ],
-        },
-      },
-      "/history/{path}": {
-        get: {
-          responses: {},
-          summary: "History",
-          description:
-            "Championship history for a given sport.\n\nhttps://www.ncaa.com/history/bowling/nc",
-          parameters: [
             {
-              name: "path",
-              in: "path",
-              schema: { type: "string" },
-              required: true,
-              examples: makeExamples(["bowling/nc", "basketball-women/d1"]),
-            },
-          ] as OpenAPIV3.ParameterObject[],
-        },
-      },
-      "/rankings/{path}": {
-        get: {
-          responses: {},
-          summary: "Rankings",
-          description:
-            "Rankings for a given sport.\n\nhttps://www.ncaa.com/rankings/football/fbs/associated-press",
-          parameters: [
-            {
-              name: "path",
+              name: "ranking",
               in: "path",
               schema: { type: "string" },
               required: true,
               examples: makeExamples([
-                "football/fbs/associated-press",
-                "basketball-women/d1/associated-press",
-                "soccer-men/d1/united-soccer-coaches",
+                "associated-press",
+                "united-soccer-coaches",
               ]),
             },
           ] as OpenAPIV3.ParameterObject[],
@@ -326,7 +356,7 @@ export const openapiSpec = openapi({
               in: "path",
               schema: { type: "string" },
               required: true,
-              examples: makeExamples(["2025", "2024"]),
+              examples: makeExamples(["2026", "2025"]),
             },
           ],
         },

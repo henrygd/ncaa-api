@@ -8,13 +8,20 @@ describe("General", () => {
     const response = await app.handle(new Request("http://localhost/"));
     expect(response.headers.get("Location")).toBe("/openapi");
   });
-  it("invalid route returns 400", async () => {
+  it("invalid route returns 404", async () => {
     const response = await app.handle(new Request("http://localhost/invalid"));
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(404);
   });
-  it("invalid page param returns 400", async () => {
-    const response = await app.handle(new Request("http://localhost/stats/test?page=invalid"));
-    expect(response.status).toBe(400);
+  it("invalid page param returns 422", async () => {
+    const response = await app.handle(new Request("http://localhost/stats/basketball-men/d1/current/team/168?page=invalid"));
+    expect(response.status).toBe(422);
+  });
+  it("good page param returns the page", async () => {
+    const response = await app.handle(new Request("http://localhost/stats/basketball-men/d1/current/team/168?page=2"));
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data).toContainKey("page");
+    expect(data.page).toBe(2);
   });
   it("rankings route returns good data", async () => {
     const response = await app.handle(
@@ -218,17 +225,21 @@ describe("Stats info", () => {
     expect(data.individual).toBeArray();
     expect(data.individual.length).toBeGreaterThan(0);
   });
-  it("returns 404 for unknown sport", async () => {
+  it("returns 422 for unknown sport", async () => {
     const response = await app.handle(
       new Request("http://localhost/stats/curling/d1")
     );
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(422);
+    const data = await response.json();
+    expect(data.type).toBe("validation");
+    expect(data.message).toBe("Invalid sport");
+
   });
-  it("returns 404 for unknown division", async () => {
+  it("returns 422 for unknown division", async () => {
     const response = await app.handle(
       new Request("http://localhost/stats/soccer-men/d99")
     );
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(422);
   });
   it("cache hit on repeat request", async () => {
     const start = performance.now();
@@ -258,7 +269,7 @@ describe("Header validation", () => {
     expect(response.status).toBe(401);
   });
   it("lack of custom header returns 401", async () => {
-    const response = await app.handle(new Request("http://localhost/stats/test"));
+    const response = await app.handle(new Request("http://localhost/stats/basketball-men/d1"));
     expect(response.status).toBe(401);
   });
 });
