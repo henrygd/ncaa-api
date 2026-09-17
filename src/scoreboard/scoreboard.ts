@@ -25,6 +25,10 @@ export async function fetchGqlScoreboard(params: NewScoreboardParams) {
   }
 
   const response = await req.json();
+  // GraphQL errors can arrive with HTTP 200; do not cache them as empty schedules.
+  if (response?.errors?.length || !Array.isArray(response?.data?.contests)) {
+    throw new Error("Invalid scoreboard response");
+  }
   return response;
 }
 
