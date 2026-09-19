@@ -22,6 +22,7 @@ import {
 import type { NewScoreboardParams } from "./scoreboard/types";
 import * as v from 'valibot';
 import { validDivisions, validGameIds, validScoreboardSports, validSports, validYears } from "./schema";
+import { getTeamScheduleGames, openTeamScheduleDb } from "./team-schedule/db";
 
 // 30 minute cache for most routes
 const cache_30m = new ExpiryMap(30 * 60 * 1000);
@@ -43,6 +44,7 @@ const validRoutes = new Map([
   ["game", cache_45s],
   ["scoreboard", cache_45s],
   ["schedule-alt", cache_30m],
+  ["team-schedule", cache_30m],
   ["news", cache_30m],
   ["brackets", cache_45s]
 ]);
@@ -443,6 +445,31 @@ export const app = new Elysia()
       sport: validSports,
       division: validDivisions,
       year: validYears,
+    })
+  })
+  .get("/team-schedule/:schoolSlug/:sport/:division/:season", async ({ cache, cacheKey, params }) => {
+    const db = openTeamScheduleDb();
+    try {
+      const season = Number(params.season);
+      const rows = getTeamScheduleGames(
+        db,
+        params.schoolSlug,
+        params.sport,
+        params.division,
+        season
+      );
+      const data = JSON.stringify(rows);
+      cache.set(cacheKey, data);
+      return data;
+    } finally {
+      db.close();
+    }
+  }, {
+    params: v.object({
+      schoolSlug: v.pipe(v.string(), v.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)),
+      sport: validSports,
+      division: validDivisions,
+      season: validYears,
     })
   })
   // scoreboard route to fetch data from data.ncaa.com json endpoint

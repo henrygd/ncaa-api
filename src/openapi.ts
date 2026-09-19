@@ -452,6 +452,44 @@ export const openapiSpec = openapi({
           },
         ],
       },
+      "/team-schedule/{schoolSlug}/{sport}/{division}/{season}": {
+        get: {
+          responses: {},
+          summary: "Team schedule",
+          description:
+            "Team schedule for a school/sport/division/season. Returns one row per game with home and away teams.",
+          parameters: [
+            {
+              name: "schoolSlug",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples(["michigan", "duke", "ucla"]),
+            },
+            {
+              name: "sport",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples(["basketball-men", "basketball-women"]),
+            },
+            {
+              name: "division",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples(["d1", "d2", "d3", "fbs", "fcs"]),
+            },
+            {
+              name: "season",
+              in: "path",
+              schema: { type: "string" },
+              required: true,
+              examples: makeExamples(["2025", "2024"]),
+            },
+          ] as OpenAPIV3.ParameterObject[],
+        },
+      },
       "/schools-index": {
         get: {
           responses: {},

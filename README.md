@@ -84,6 +84,12 @@ It also requires different dates for different sports. Football uses YYYY, while
 
 `GET /schedule/basketball-men/d1/2023/02`
 
+### Team Schedule
+
+Returns games for one school in one sport/division/season.
+
+`GET /team-schedule/michigan/basketball-men/d1/2025`
+
 ### Brackets
 
 Tournament bracket for a given sport, division, and year, including live scores.
