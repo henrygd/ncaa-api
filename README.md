@@ -12,7 +12,7 @@ Make a GET request using the same path as the URL on ncaa.com. You'll get a JSON
 
 You can test using the [demo API](https://ncaa-api.henrygd.me/openapi). [Host your own](#deployment) if you need it to be reliable long term.
 
-> Note: The public API is limited to 5 requests per second per IP.
+> Note: The public API is limited to 3 requests per second per IP.
 
 ## Parameters
 
